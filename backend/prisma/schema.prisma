@@ -1,0 +1,114 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companies Company[]
+}
+
+model Company {
+  id               String   @id @default(uuid())
+  name             String
+  niche            String
+  description      String
+  city             String
+  tone             String
+  postingFrequency Int      @default(12)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  brandProfile BrandProfile?
+  posts        Post[]
+  calendars    ContentCalendar[]
+  aiJobs       AIJob[]
+}
+
+model BrandProfile {
+  id                 String   @id @default(uuid())
+  description        String
+  targetAudience     String
+  mainProducts       String
+  communicationStyle String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model ContentCalendar {
+  id        String      @id @default(uuid())
+  date      DateTime
+  type      ContentType
+  status    JobStatus   @default(PENDING)
+  createdAt DateTime    @default(now())
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  post Post?
+}
+
+model Post {
+  id          String      @id @default(uuid())
+  type        ContentType
+  caption     String?
+  hashtags    String?
+  mediaUrl    String?
+  status      JobStatus   @default(PENDING)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  calendarId String?          @unique
+  calendar   ContentCalendar? @relation(fields: [calendarId], references: [id])
+}
+
+model AIJob {
+  id        String    @id @default(uuid())
+  type      String
+  status    JobStatus @default(PENDING)
+  payload   Json
+  result    Json?
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
+}
+
+enum ContentType {
+  IMAGE
+  REEL
+  STORY
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
