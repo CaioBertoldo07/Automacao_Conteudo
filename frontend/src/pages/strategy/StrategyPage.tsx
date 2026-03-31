@@ -87,7 +87,7 @@ export function StrategyPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Estratégia de Conteúdo</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Gerada pelo Claude com base no perfil da sua empresa.
+            Gerada pelo Gemini com base no perfil da sua empresa.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -122,7 +122,7 @@ export function StrategyPage() {
           <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
           <p className="text-base font-medium text-foreground">Gerando estratégia com IA...</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Isso pode levar alguns segundos. O Claude está analisando sua empresa.
+            Isso pode levar alguns segundos. O Gemini está analisando sua empresa.
           </p>
         </div>
       )}
@@ -132,7 +132,7 @@ export function StrategyPage() {
           <Sparkles className="mb-4 h-10 w-10 text-muted-foreground opacity-40" />
           <p className="text-base font-medium text-foreground">Nenhuma estratégia gerada ainda</p>
           <p className="mt-1 mb-6 text-sm text-muted-foreground">
-            Clique em "Gerar estratégia" para o Claude criar um plano personalizado para sua empresa.
+            Clique em "Gerar estratégia" para o Gemini criar um plano personalizado para sua empresa.
           </p>
           <Button onClick={handleGenerate}>
             <Sparkles className="h-4 w-4" />

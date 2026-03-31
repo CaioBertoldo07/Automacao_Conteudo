@@ -1,9 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { env } from "../config/env";
 
-const MODEL = "claude-sonnet-4-6";
-const MAX_TOKENS = 4096;
+const MODEL = process.env.GOOGLE_MODEL?.trim() || "gemini-2.5-flash";
 
 const postIdeaSchema = z.object({
   title: z.string(),
@@ -105,24 +104,21 @@ function extractJson(raw: string): string {
 }
 
 export async function generateStrategy(company: CompanyContext): Promise<StrategyContent> {
-  if (!env.anthropicApiKey) {
-    throw Object.assign(new Error("ANTHROPIC_API_KEY não configurada."), { statusCode: 503 });
+  if (!env.googleApiKey) {
+    throw Object.assign(new Error("GOOGLE_API_KEY não configurada."), { statusCode: 503 });
   }
 
-  const client = new Anthropic({ apiKey: env.anthropicApiKey });
+  const client = new GoogleGenerativeAI(env.googleApiKey);
+  const model = client.getGenerativeModel({ model: MODEL });
 
-  const message = await client.messages.create({
-    model: MODEL,
-    max_tokens: MAX_TOKENS,
-    messages: [{ role: "user", content: buildPrompt(company) }],
-  });
+  const response = await model.generateContent(buildPrompt(company));
+  const text = response.response.text();
 
-  const block = message.content[0];
-  if (!block || block.type !== "text") {
+  if (!text) {
     throw Object.assign(new Error("Resposta inesperada da IA."), { statusCode: 502 });
   }
 
-  const jsonText = extractJson(block.text);
+  const jsonText = extractJson(text);
 
   let parsed: unknown;
   try {
