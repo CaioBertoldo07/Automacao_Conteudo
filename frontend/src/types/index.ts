@@ -6,8 +6,19 @@ export interface User {
   createdAt: string;
 }
 
+export interface BrandProfile {
+  id: string;
+  description: string;
+  targetAudience: string;
+  mainProducts: string;
+  communicationStyle: string;
+  createdAt: string;
+  companyId: string;
+}
+
 export interface Company {
   id: string;
+  userId: string;
   name: string;
   niche: string;
   description: string;
@@ -15,7 +26,20 @@ export interface Company {
   tone: string;
   postingFrequency: number;
   createdAt: string;
+  updatedAt: string;
+  brandProfile?: BrandProfile | null;
 }
+
+export interface CreateCompanyRequest {
+  name: string;
+  niche: string;
+  description: string;
+  city: string;
+  tone: string;
+  postingFrequency?: number;
+}
+
+export type UpdateCompanyRequest = Partial<CreateCompanyRequest>;
 
 export interface TokenResponse {
   access_token: string;

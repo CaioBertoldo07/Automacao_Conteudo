@@ -1,5 +1,13 @@
 import axios from "axios";
-import type { LoginRequest, RegisterRequest, TokenResponse, User } from "@/types";
+import type {
+  LoginRequest,
+  RegisterRequest,
+  TokenResponse,
+  User,
+  Company,
+  CreateCompanyRequest,
+  UpdateCompanyRequest,
+} from "@/types";
 
 const api = axios.create({
   baseURL: "/api",
@@ -41,6 +49,43 @@ export const userService = {
   getMe: async (): Promise<User> => {
     const response = await api.get<User>("/users/me");
     return response.data;
+  },
+};
+
+export const companyService = {
+  list: async (): Promise<Company[]> => {
+    const response = await api.get<Company[]>("/companies");
+    return response.data;
+  },
+
+  getById: async (id: string): Promise<Company> => {
+    const response = await api.get<Company>(`/companies/${id}`);
+    return response.data;
+  },
+
+  create: async (data: CreateCompanyRequest): Promise<Company> => {
+    const response = await api.post<Company>("/companies", data);
+    return response.data;
+  },
+
+  update: async (id: string, data: UpdateCompanyRequest): Promise<Company> => {
+    const response = await api.patch<Company>(`/companies/${id}`, data);
+    return response.data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/companies/${id}`);
+  },
+
+  getMyProfile: async (): Promise<Company | null> => {
+    try {
+      const response = await api.get<Company>("/companies/profile/me");
+      return response.data;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      throw err;
+    }
   },
 };
 

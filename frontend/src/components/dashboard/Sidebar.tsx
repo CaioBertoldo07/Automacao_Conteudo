@@ -6,9 +6,12 @@ import {
   Settings,
   LogOut,
   Zap,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useAuth } from "@/hooks/useAuth";
+import { useThemeContext } from "@/App";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -20,6 +23,7 @@ const navItems = [
 export function Sidebar() {
   const { logout, getUser } = useAuth();
   const user = getUser();
+  const { theme, toggleTheme } = useThemeContext();
 
   return (
     <aside className="flex h-screen w-64 flex-col border-r border-border bg-surface">
@@ -65,6 +69,17 @@ export function Sidebar() {
             <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
           </div>
         </div>
+        <button
+          onClick={toggleTheme}
+          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          {theme === "dark" ? (
+            <Sun className="h-4 w-4" />
+          ) : (
+            <Moon className="h-4 w-4" />
+          )}
+          {theme === "dark" ? "Modo claro" : "Modo escuro"}
+        </button>
         <button
           onClick={logout}
           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"

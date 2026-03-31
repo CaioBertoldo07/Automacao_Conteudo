@@ -2,6 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Light mode (default) ─────────────────────────────────── */
+:root,
+:root[data-theme="light"] {
+  --background:           248 250 252;   /* slate-50  */
+  --surface:              255 255 255;   /* white     */
+  --border:               226 232 240;   /* slate-200 */
+  --foreground:            15  23  42;   /* slate-900 */
+  --muted:                241 245 249;   /* slate-100 */
+  --muted-foreground:     100 116 139;   /* slate-500 */
+
+  /* Brand — idêntico nos dois temas */
+  --primary:              124  58 237;   /* #7C3AED   */
+  --primary-foreground:   255 255 255;
+  --secondary:             37  99 235;   /* #2563EB   */
+  --secondary-foreground: 255 255 255;
+  --accent:               249 115  22;   /* #F97316   */
+  --accent-foreground:    255 255 255;
+}
+
+/* ── Dark mode ────────────────────────────────────────────── */
+:root.dark,
+html.dark,
+body.dark,
+:root[data-theme="dark"],
+html[data-theme="dark"],
+body[data-theme="dark"] {
+  --background:            15  23  42;   /* #0F172A   */
+  --surface:               30  41  59;   /* #1E293B   */
+  --border:                51  65  85;   /* #334155   */
+  --foreground:           229 231 235;   /* #E5E7EB   */
+  --muted:                 30  41  59;   /* #1E293B   */
+  --muted-foreground:     148 163 184;   /* #94A3B8   */
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -9,6 +43,10 @@
 
   body {
     @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  #root {
+    @apply min-h-screen bg-background text-foreground;
   }
 
   ::-webkit-scrollbar {

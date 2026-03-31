@@ -4,6 +4,7 @@ import { PrismaClient } from "@prisma/client";
 import { env } from "./config/env";
 import { authRoutes } from "./routes/auth.routes";
 import { userRoutes } from "./routes/user.routes";
+import { companyRoutes } from "./routes/company.routes";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -23,6 +24,7 @@ export async function buildApp() {
 
   fastify.register(authRoutes, { prefix: "/api", prisma });
   fastify.register(userRoutes, { prefix: "/api", prisma });
+  fastify.register(companyRoutes, { prefix: "/api", prisma });
 
   fastify.addHook("onClose", async () => {
     await prisma.$disconnect();
