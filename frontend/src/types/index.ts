@@ -60,6 +60,39 @@ export interface RegisterRequest {
 
 export type ContentType = "IMAGE" | "REEL" | "STORY";
 export type JobStatus = "PENDING" | "PROCESSING" | "DONE" | "FAILED";
+export type StrategyApprovalStatus = "PENDING_APPROVAL" | "APPROVED" | "REJECTED";
+
+export interface PostIdea {
+  title: string;
+  objective: string;
+  format: ContentType;
+  hook: string;
+  description: string;
+  cta: string;
+}
+
+export interface StrategyContent {
+  summary: string;
+  businessGoals: string[];
+  targetAudience: string;
+  brandTone: string;
+  contentPillars: string[];
+  postingCadence: string;
+  primaryCTA: string;
+  postIdeas: PostIdea[];
+}
+
+export interface ContentStrategy {
+  id: string;
+  companyId: string;
+  content: StrategyContent;
+  approvalStatus: StrategyApprovalStatus;
+  approvedAt: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface Post {
   id: string;
@@ -70,4 +103,14 @@ export interface Post {
   status: JobStatus;
   scheduledAt: string | null;
   createdAt: string;
+}
+
+export interface CalendarEntry {
+  id: string;
+  companyId: string;
+  date: string;
+  type: ContentType;
+  status: JobStatus;
+  createdAt: string;
+  post: Post | null;
 }

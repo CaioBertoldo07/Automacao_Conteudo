@@ -9,6 +9,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/autoconteudo
       SECRET_KEY: mysecretkey123
@@ -17,10 +19,9 @@ services:
       APP_PORT: "8000"
       CORS_ORIGINS: http://localhost:5173
       REDIS_URL: redis://redis:6379
-      ANTHROPIC_API_KEY: ""
-      GOOGLE_API_KEY: ""
     ports:
       - "8000:8000"
+    command: sh -c "npx prisma db push && node dist/server.js"
     restart: unless-stopped
 
   postgres:

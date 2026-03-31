@@ -61,3 +61,66 @@ body[data-theme="dark"] {
     @apply bg-primary-600 rounded-full;
   }
 }
+
+/* ── FullCalendar theme overrides ─────────────────────────── */
+.fc-dark .fc-theme-standard td,
+.fc-dark .fc-theme-standard th,
+.fc-dark .fc-theme-standard .fc-scrollgrid {
+  border-color: rgb(var(--border));
+}
+
+.fc-dark .fc-col-header-cell-cushion,
+.fc-dark .fc-daygrid-day-number {
+  color: rgb(var(--foreground));
+  text-decoration: none;
+}
+
+.fc-dark .fc-day-other .fc-daygrid-day-number {
+  color: rgb(var(--muted-foreground));
+}
+
+.fc-dark .fc-daygrid-day:hover {
+  background-color: rgb(var(--muted) / 0.5);
+}
+
+.fc-dark .fc-button-primary {
+  background-color: rgb(var(--primary));
+  border-color: rgb(var(--primary));
+  color: rgb(var(--primary-foreground));
+  border-radius: 6px;
+  font-size: 0.75rem;
+  padding: 4px 10px;
+}
+
+.fc-dark .fc-button-primary:hover {
+  background-color: rgb(var(--primary) / 0.85);
+  border-color: rgb(var(--primary) / 0.85);
+}
+
+.fc-dark .fc-button-primary:not(:disabled):active,
+.fc-dark .fc-button-primary:not(:disabled).fc-button-active {
+  background-color: rgb(var(--primary) / 0.7);
+  border-color: rgb(var(--primary) / 0.7);
+}
+
+.fc-dark .fc-toolbar-title {
+  color: rgb(var(--foreground));
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.fc-dark .fc-today-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.fc-dark .fc-daygrid-day.fc-day-today {
+  background-color: rgb(var(--primary) / 0.07);
+}
+
+.fc-dark .fc-event {
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  padding: 1px 4px;
+}

@@ -7,6 +7,8 @@ import type {
   Company,
   CreateCompanyRequest,
   UpdateCompanyRequest,
+  ContentStrategy,
+  CalendarEntry,
 } from "@/types";
 
 const api = axios.create({
@@ -86,6 +88,55 @@ export const companyService = {
       if (status === 404) return null;
       throw err;
     }
+  },
+};
+
+export const strategyService = {
+  generate: async (): Promise<ContentStrategy> => {
+    const response = await api.post<ContentStrategy>("/strategies/generate", {});
+    return response.data;
+  },
+
+  getMyStrategy: async (): Promise<ContentStrategy | null> => {
+    try {
+      const response = await api.get<ContentStrategy>("/strategies/me");
+      return response.data;
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 404) return null;
+      throw err;
+    }
+  },
+
+  approve: async (id: string): Promise<ContentStrategy> => {
+    const response = await api.patch<ContentStrategy>(`/strategies/${id}/approval`, {
+      action: "APPROVED",
+    });
+    return response.data;
+  },
+
+  reject: async (id: string, reason?: string): Promise<ContentStrategy> => {
+    const response = await api.patch<ContentStrategy>(`/strategies/${id}/approval`, {
+      action: "REJECTED",
+      rejectionReason: reason,
+    });
+    return response.data;
+  },
+};
+
+export const calendarService = {
+  generate: async (): Promise<CalendarEntry[]> => {
+    const response = await api.post<CalendarEntry[]>("/calendars/generate", {});
+    return response.data;
+  },
+
+  getMyCalendar: async (): Promise<CalendarEntry[]> => {
+    const response = await api.get<CalendarEntry[]>("/calendars/me");
+    return response.data;
+  },
+
+  remove: async (id: string): Promise<void> => {
+    await api.delete(`/calendars/${id}`);
   },
 };
 

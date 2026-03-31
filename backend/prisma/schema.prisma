@@ -33,10 +33,11 @@ model Company {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  brandProfile BrandProfile?
-  posts        Post[]
-  calendars    ContentCalendar[]
-  aiJobs       AIJob[]
+  brandProfile     BrandProfile?
+  contentStrategy  ContentStrategy?
+  posts            Post[]
+  calendars        ContentCalendar[]
+  aiJobs           AIJob[]
 }
 
 model BrandProfile {
@@ -96,6 +97,26 @@ model AIJob {
 
   companyId String?
   company   Company? @relation(fields: [companyId], references: [id])
+}
+
+model ContentStrategy {
+  id               String                 @id @default(uuid())
+  content          Json
+  approvalStatus   StrategyApprovalStatus @default(PENDING_APPROVAL)
+  approvedAt       DateTime?
+  rejectedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum StrategyApprovalStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
 }
 
 enum ContentType {

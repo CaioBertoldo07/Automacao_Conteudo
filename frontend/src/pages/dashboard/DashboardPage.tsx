@@ -10,11 +10,13 @@ import {
   MapPin,
   Pencil,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
 import { useMyProfile } from "@/hooks/useCompany";
+import { useMyStrategy } from "@/hooks/useStrategy";
 
 const stats = [
   { label: "Posts Gerados", value: "0", icon: FileImage, color: "text-primary" },
@@ -29,6 +31,7 @@ export function DashboardPage() {
   const user = getUser();
 
   const { data: company, isLoading } = useMyProfile();
+  const { data: strategy } = useMyStrategy();
 
   // Redireciona para cadastro se não tiver empresa
   useEffect(() => {
@@ -140,20 +143,62 @@ export function DashboardPage() {
           </Card>
         )}
 
-        {/* Atividade recente */}
+        {/* Estratégia de conteúdo */}
         <Card>
           <CardHeader>
-            <CardTitle>Atividade recente</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Estratégia de Conteúdo
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Zap className="mb-2 h-8 w-8 text-muted-foreground opacity-40" />
-              <p className="text-sm text-muted-foreground">
-                {company
-                  ? "Nenhuma atividade ainda. A geração de conteúdo começa na Fase 3."
-                  : "Cadastre sua empresa para começar."}
-              </p>
-            </div>
+            {strategy ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-medium ${
+                      strategy.approvalStatus === "APPROVED"
+                        ? "bg-green-500/10 text-green-500 border-green-500/20"
+                        : strategy.approvalStatus === "REJECTED"
+                        ? "bg-red-500/10 text-red-400 border-red-500/20"
+                        : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
+                    }`}
+                  >
+                    {strategy.approvalStatus === "APPROVED"
+                      ? "Aprovada"
+                      : strategy.approvalStatus === "REJECTED"
+                      ? "Reprovada"
+                      : "Aguardando aprovação"}
+                  </span>
+                </div>
+                <p className="line-clamp-3 text-sm text-muted-foreground">
+                  {strategy.content.summary}
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/strategy")}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Ver estratégia completa
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Sparkles className="mb-3 h-8 w-8 text-muted-foreground opacity-40" />
+                <p className="mb-4 text-sm text-muted-foreground">
+                  {company
+                    ? "Gere uma estratégia de conteúdo personalizada com IA."
+                    : "Cadastre sua empresa para gerar uma estratégia."}
+                </p>
+                {company && (
+                  <Button size="sm" onClick={() => navigate("/strategy")}>
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Gerar estratégia
+                  </Button>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

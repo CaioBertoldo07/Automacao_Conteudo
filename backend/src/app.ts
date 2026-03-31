@@ -5,6 +5,8 @@ import { env } from "./config/env";
 import { authRoutes } from "./routes/auth.routes";
 import { userRoutes } from "./routes/user.routes";
 import { companyRoutes } from "./routes/company.routes";
+import { strategyRoutes } from "./routes/strategy.routes";
+import { calendarRoutes } from "./routes/calendar.routes";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -25,6 +27,8 @@ export async function buildApp() {
   fastify.register(authRoutes, { prefix: "/api", prisma });
   fastify.register(userRoutes, { prefix: "/api", prisma });
   fastify.register(companyRoutes, { prefix: "/api", prisma });
+  fastify.register(strategyRoutes, { prefix: "/api", prisma });
+  fastify.register(calendarRoutes, { prefix: "/api", prisma });
 
   fastify.addHook("onClose", async () => {
     await prisma.$disconnect();

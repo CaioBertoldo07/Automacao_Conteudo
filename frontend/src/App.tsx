@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { LoginPage } from "@/pages/login/LoginPage";
 import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { CompanyFormPage } from "@/pages/company/CompanyFormPage";
+import { StrategyPage } from "@/pages/strategy/StrategyPage";
+import { CalendarPage } from "@/pages/calendar/CalendarPage";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { useTheme, type Theme } from "@/hooks/useTheme";
 
@@ -76,6 +78,22 @@ export default function App() {
           element={
             <PrivateLayout>
               <CompanyFormPage />
+            </PrivateLayout>
+          }
+        />
+        <Route
+          path="/strategy"
+          element={
+            <PrivateLayout>
+              <StrategyPage />
+            </PrivateLayout>
+          }
+        />
+        <Route
+          path="/calendar"
+          element={
+            <PrivateLayout>
+              <CalendarPage />
             </PrivateLayout>
           }
         />

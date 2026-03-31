@@ -8,6 +8,7 @@ import {
   Zap,
   Sun,
   Moon,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { useAuth } from "@/hooks/useAuth";
@@ -15,6 +16,7 @@ import { useThemeContext } from "@/App";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/strategy", icon: Sparkles, label: "Estratégia" },
   { to: "/calendar", icon: Calendar, label: "Calendário" },
   { to: "/content", icon: FileImage, label: "Conteúdo" },
   { to: "/settings", icon: Settings, label: "Configurações" },
