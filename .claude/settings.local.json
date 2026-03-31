@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/UEA-EST/AppData/Roaming/Prisma/master/efd2449663b3d73d637ea1fd226bafbcf45b3102/windows/**)",
+      "Bash(xxd)",
+      "Bash(grep -v '\\\\.pyc$')",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(npx tsc:*)",
+      "Bash(for f:*)",
+      "Bash(do)",
+      "Bash(echo \"=== $f ===\")",
+      "Read(//c/Users/UEA-EST/Documents/GitHub/Automacao_Conteudo/backend/**)",
+      "Bash(done)"
+    ]
+  }
+}

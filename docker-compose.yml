@@ -1,6 +1,28 @@
-version: "3.9"
-
 services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autoconteudo_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/autoconteudo
+      SECRET_KEY: mysecretkey123
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      APP_ENV: development
+      APP_PORT: "8000"
+      CORS_ORIGINS: http://localhost:5173
+      REDIS_URL: redis://redis:6379
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_API_KEY: ""
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
   postgres:
     image: postgres:16-alpine
     container_name: autoconteudo_postgres
@@ -12,12 +34,22 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d autoconteudo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   redis:
     image: redis:7-alpine
     container_name: autoconteudo_redis
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   postgres_data:
