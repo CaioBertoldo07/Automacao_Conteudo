@@ -3,6 +3,7 @@ import {
   ContentType,
   JobStatus,
   StrategyApprovalStatus,
+  Prisma,
 } from "@prisma/client";
 import type { StrategyContent } from "../agents/claude.agent";
 import { generateCaption, type CaptionContext } from "../agents/content.agent";
@@ -412,4 +413,264 @@ export async function processPostContent(
     );
     throw err;
   }
+}
+
+// ─── Dashboard stats ────────────────────────────────────────────────────────
+//
+// Metric definitions (source of truth):
+//   donePosts          → Post rows (posts are only created on successful generation,
+//                        so this equals the total count of successfully generated posts)
+//   downloadsAvailable → Posts that have a media file stored (mediaUrl != null)
+//   calendarTotal      → Total ContentCalendar entries (all scheduled slots)
+//   calendarPending    → Calendar slots awaiting generation (status = PENDING)
+//   calendarProcessing → Calendar slots actively being processed by a worker (status = PROCESSING)
+//   calendarFailed     → Calendar slots that failed and can be retried (status = FAILED)
+//   activeJobs         → AIJob rows in PENDING or PROCESSING state
+//
+// Note: pendingPosts was previously sourced from Post.status which is always DONE on
+// creation — that metric was misleading. Pending work is now tracked via ContentCalendar.
+
+export interface DashboardStats {
+  donePosts: number;
+  downloadsAvailable: number;
+  calendarTotal: number;
+  calendarDone: number;
+  calendarPending: number;
+  calendarProcessing: number;
+  calendarFailed: number;
+  activeJobs: number;
+  /** REELs that were generated as images due to Veo being unavailable. */
+  reelFallbackCount: number;
+}
+
+export async function getDashboardStats(
+  prisma: PrismaClient,
+  userId: string
+): Promise<DashboardStats> {
+  const company = await findUserCompany(prisma, userId);
+
+  if (!company) {
+    return {
+      donePosts: 0,
+      downloadsAvailable: 0,
+      calendarTotal: 0,
+      calendarDone: 0,
+      calendarPending: 0,
+      calendarProcessing: 0,
+      calendarFailed: 0,
+      activeJobs: 0,
+      reelFallbackCount: 0,
+    };
+  }
+
+  const cid = company.id;
+
+  const [
+    donePosts,
+    downloadsAvailable,
+    calendarTotal,
+    calendarDone,
+    calendarPending,
+    calendarProcessing,
+    calendarFailed,
+    activeJobs,
+    reelFallbackCount,
+  ] = await prisma.$transaction([
+    prisma.post.count({ where: { companyId: cid } }),
+    prisma.post.count({ where: { companyId: cid, mediaUrl: { not: null } } }),
+    prisma.contentCalendar.count({ where: { companyId: cid } }),
+    prisma.contentCalendar.count({ where: { companyId: cid, status: JobStatus.DONE } }),
+    prisma.contentCalendar.count({ where: { companyId: cid, status: JobStatus.PENDING } }),
+    prisma.contentCalendar.count({ where: { companyId: cid, status: JobStatus.PROCESSING } }),
+    prisma.contentCalendar.count({ where: { companyId: cid, status: JobStatus.FAILED } }),
+    prisma.aIJob.count({
+      where: {
+        companyId: cid,
+        status: { in: [JobStatus.PENDING, JobStatus.PROCESSING] },
+      },
+    }),
+    // Count REELs saved as images: type=REEL, has mediaUrl, mediaUrl not an MP4.
+    prisma.post.count({
+      where: {
+        companyId: cid,
+        type: ContentType.REEL,
+        mediaUrl: { not: null },
+        NOT: [{ mediaUrl: { endsWith: ".mp4" } }],
+      },
+    }),
+  ]);
+
+  return {
+    donePosts,
+    downloadsAvailable,
+    calendarTotal,
+    calendarDone,
+    calendarPending,
+    calendarProcessing,
+    calendarFailed,
+    activeJobs,
+    reelFallbackCount,
+  };
+}
+
+// ─── List posts (paginated) ─────────────────────────────────────────────────
+
+// Infer media kind from the file extension stored in mediaUrl.
+// This is authoritative because:
+//   - Veo-generated videos are stored as .mp4, .webm, .mov, .avi, .m4v, or .bin
+//   - Image fallbacks (Gemini) are stored as .png / .webp / .jpg
+// No extra DB query is needed.
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v", ".avi"]);
+
+/**
+ * Extract the file extension from a URL, handling query parameters.
+ * Examples:
+ *   "/media/abc123.mp4" → ".mp4"
+ *   "/media/abc123.mp4?t=123" → ".mp4"
+ */
+function getFileExtension(url: string): string {
+  // Remove query parameters if present
+  const path = url.split("?")[0];
+  const ext = "." + (path.split(".").pop() ?? "");
+  return ext.toLowerCase();
+}
+
+function inferMediaKind(mediaUrl: string | null): "video" | "image" | "none" {
+  if (!mediaUrl) return "none";
+  const ext = getFileExtension(mediaUrl);
+  return VIDEO_EXTENSIONS.has(ext) ? "video" : "image";
+}
+
+export interface PostItem {
+  id: string;
+  type: ContentType;
+  caption: string | null;
+  hashtags: string | null;
+  mediaUrl: string | null;
+  status: JobStatus;
+  scheduledAt: string | null;
+  createdAt: string;
+  calendarDate: string | null;
+  /** Whether the media is a video, an image, or absent. Derived from mediaUrl extension. */
+  mediaKind: "video" | "image" | "none";
+  /** True when a REEL was generated with an image as fallback (Veo unavailable). */
+  reelFallback: boolean;
+}
+
+export interface PostsPage {
+  data: PostItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PostsFilter {
+  status?: JobStatus;
+  type?: ContentType;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export async function listPosts(
+  prisma: PrismaClient,
+  userId: string,
+  params: PostsFilter
+): Promise<PostsPage> {
+  const company = await findUserCompany(prisma, userId);
+  if (!company) throw makeError("Nenhuma empresa cadastrada.", 404);
+
+  const { status, type, from, to } = params;
+  const page = Math.max(1, params.page ?? 1);
+  const limit = Math.min(100, Math.max(1, params.limit ?? 20));
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.PostWhereInput = {
+    companyId: company.id,
+    ...(status ? { status } : {}),
+    ...(type ? { type } : {}),
+    ...(from || to
+      ? {
+          createdAt: {
+            ...(from ? { gte: new Date(from) } : {}),
+            ...(to ? { lte: new Date(to) } : {}),
+          },
+        }
+      : {}),
+  };
+
+  const [posts, total] = await prisma.$transaction([
+    prisma.post.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: { calendar: { select: { date: true } } },
+    }),
+    prisma.post.count({ where }),
+  ]);
+
+  const data: PostItem[] = posts.map((p) => {
+    const mediaKind = inferMediaKind(p.mediaUrl);
+    return {
+      id: p.id,
+      type: p.type,
+      caption: p.caption,
+      hashtags: p.hashtags,
+      mediaUrl: p.mediaUrl,
+      status: p.status,
+      scheduledAt: p.scheduledAt?.toISOString() ?? null,
+      createdAt: p.createdAt.toISOString(),
+      calendarDate: p.calendar?.date?.toISOString() ?? null,
+      mediaKind,
+      reelFallback: p.type === ContentType.REEL && mediaKind === "image",
+    };
+  });
+
+  return { data, total, page, limit };
+}
+
+// ─── Download (ownership-validated media URL) ───────────────────────────────
+//
+// Decision: returns { mediaUrl, type, filename } instead of streaming the file.
+// Rationale: media files are served by the existing /media/:filename static route
+// (no auth required — UUIDs make guessing infeasible). This endpoint acts as the
+// auth + ownership gate; the frontend fetches the URL as a Blob and triggers the
+// browser download with the correct filename + extension.
+
+export interface PostMediaInfo {
+  mediaUrl: string;
+  type: ContentType;
+  /** Suggested download filename derived from the media path, e.g. "post-abc12345.png" */
+  filename: string;
+  mediaKind: "video" | "image" | "none";
+  /** True when a REEL was generated with an image as fallback (Veo unavailable). */
+  reelFallback: boolean;
+}
+
+export async function getPostMediaUrl(
+  prisma: PrismaClient,
+  userId: string,
+  postId: string
+): Promise<PostMediaInfo> {
+  const post = await prisma.post.findFirst({
+    where: { id: postId, company: { userId } },
+    select: { id: true, mediaUrl: true, type: true },
+  });
+
+  if (!post) throw makeError("Post não encontrado.", 404);
+  if (!post.mediaUrl) throw makeError("Este post não possui mídia gerada.", 422);
+
+  const ext = post.mediaUrl.split(".").pop() ?? "bin";
+  const filename = `post-${post.id.slice(0, 8)}.${ext}`;
+  const mediaKind = inferMediaKind(post.mediaUrl);
+
+  return {
+    mediaUrl: post.mediaUrl,
+    type: post.type,
+    filename,
+    mediaKind,
+    reelFallback: post.type === ContentType.REEL && mediaKind === "image",
+  };
 }

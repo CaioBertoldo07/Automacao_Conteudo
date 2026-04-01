@@ -14,4 +14,9 @@ export async function contentRoutes(
   fastify.post("/content/batch", auth, c.generateBatchHandler.bind(c));
   fastify.post("/content/:id/generate", auth, c.generateOne.bind(c));
   fastify.get("/content/jobs/:aiJobId", auth, c.getJobStatusHandler.bind(c));
+
+  // Phase 7 — dashboard & post management
+  fastify.get("/posts/stats", auth, c.getDashboardStatsHandler.bind(c));
+  fastify.get("/posts", auth, c.listPostsHandler.bind(c));
+  fastify.get("/posts/:id/download", auth, c.downloadPostMediaHandler.bind(c));
 }

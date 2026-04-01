@@ -149,3 +149,69 @@ export interface AIJobStatus {
   result: Record<string, unknown> | null;
   error: string | null;
 }
+
+// Phase 7 — dashboard & post management
+
+export type MediaKind = "video" | "image" | "none";
+
+export interface DashboardStats {
+  /** Posts successfully generated (posts only exist when generation succeeds). */
+  donePosts: number;
+  /** Posts with a media file available for download. */
+  downloadsAvailable: number;
+  /** Total ContentCalendar entries (all scheduled slots). */
+  calendarTotal: number;
+  /** Calendar slots with completed generation (status=DONE). Used as progress numerator. */
+  calendarDone: number;
+  /** Calendar slots awaiting generation (status=PENDING). */
+  calendarPending: number;
+  /** Calendar slots being processed by a worker (status=PROCESSING). */
+  calendarProcessing: number;
+  /** Calendar slots that failed and can be retried (status=FAILED). */
+  calendarFailed: number;
+  /** AIJob rows in PENDING or PROCESSING state. */
+  activeJobs: number;
+  /** REELs generated as images because Veo was unavailable. */
+  reelFallbackCount: number;
+}
+
+export interface PostItem {
+  id: string;
+  type: ContentType;
+  caption: string | null;
+  hashtags: string | null;
+  mediaUrl: string | null;
+  status: JobStatus;
+  scheduledAt: string | null;
+  createdAt: string;
+  calendarDate: string | null;
+  mediaKind: MediaKind;
+  /** True when a REEL was generated with an image as fallback (Veo unavailable). */
+  reelFallback: boolean;
+}
+
+export interface PostsPage {
+  data: PostItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface PostsFilter {
+  status?: JobStatus;
+  type?: ContentType;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PostMediaInfo {
+  mediaUrl: string;
+  type: ContentType;
+  /** Suggested download filename, e.g. "post-abc12345.png" */
+  filename: string;
+  mediaKind: MediaKind;
+  /** True when a REEL was generated with an image as fallback (Veo unavailable). */
+  reelFallback: boolean;
+}

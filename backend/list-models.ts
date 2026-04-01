@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import "dotenv/config";
 
 async function listModels() {

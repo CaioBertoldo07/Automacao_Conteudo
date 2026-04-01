@@ -15,7 +15,7 @@ export interface VideoGenerationInput {
 // The @google/generative-ai SDK v0.24 does not expose Veo endpoints, so we
 // call the underlying HTTP API with native fetch (Node 18+).
 
-const VEO_MODEL = "veo-3.0-generate-preview";
+const VEO_MODEL = "veo-3.0-generate-001";
 const BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
 
 /** Maximum time (ms) to wait for Veo to finish before falling back to image. */
@@ -38,6 +38,13 @@ interface OperationResponse {
   done?: boolean;
   error?: { code: number; message: string };
   response?: {
+    // Actual Veo API response: generatedSamples is nested under generateVideoResponse
+    generateVideoResponse?: {
+      generatedSamples?: Array<{
+        video?: { uri?: string; encoding?: string };
+      }>;
+    };
+    // Keep old shape as fallback in case API changes
     generatedSamples?: Array<{
       video?: { uri?: string; encoding?: string };
     }>;
@@ -68,9 +75,11 @@ async function startVideoGeneration(prompt: string, apiKey: string): Promise<str
 
 async function pollOperation(operationName: string, apiKey: string): Promise<OperationResponse> {
   const deadline = Date.now() + POLL_TIMEOUT_MS;
+  let attempts = 0;
 
   while (Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    attempts++;
 
     const url = `${BASE_URL}/${operationName}?key=${apiKey}`;
     const res = await fetch(url);
@@ -93,7 +102,9 @@ async function pollOperation(operationName: string, apiKey: string): Promise<Ope
 }
 
 async function downloadAsBase64(videoUri: string, apiKey: string): Promise<{ base64: string; mimeType: string }> {
-  const url = `${videoUri}?key=${apiKey}&alt=media`;
+  // The URI may already contain query params (e.g. ?alt=media), so append key with & or ?
+  const separator = videoUri.includes("?") ? "&" : "?";
+  const url = `${videoUri}${separator}key=${apiKey}`;
   const res = await fetch(url);
 
   if (!res.ok) {
@@ -126,19 +137,22 @@ export async function generateVideo(input: VideoGenerationInput): Promise<VideoR
 
   try {
     const prompt = buildVideoPrompt(input);
-
     const operationName = await startVideoGeneration(prompt, apiKey);
     const operation = await pollOperation(operationName, apiKey);
 
-    const sample = operation.response?.generatedSamples?.[0];
+    // Support both response shapes: new (generateVideoResponse wrapper) and legacy (flat)
+    const samples =
+      operation.response?.generateVideoResponse?.generatedSamples ??
+      operation.response?.generatedSamples;
+    const sample = samples?.[0];
     const videoUri = sample?.video?.uri;
-    const mimeType = sample?.video?.encoding ?? "video/mp4";
 
     if (!videoUri) {
       return { available: false, reason: "Veo: nenhum vídeo na resposta da operação." };
     }
 
-    const { base64 } = await downloadAsBase64(videoUri, apiKey);
+    // mimeType comes from the download response Content-Type header
+    const { base64, mimeType } = await downloadAsBase64(videoUri, apiKey);
     return { available: true, base64, mimeType };
   } catch (err) {
     const reason = (err as Error).message ?? "Erro desconhecido no Veo.";

@@ -12,6 +12,10 @@ import type {
   EnqueueResult,
   BatchEnqueueResult,
   AIJobStatus,
+  DashboardStats,
+  PostsPage,
+  PostsFilter,
+  PostMediaInfo,
 } from "@/types";
 
 const api = axios.create({
@@ -161,6 +165,34 @@ export const contentService = {
   /** GET: polls job status by aiJobId. */
   getJobStatus: async (aiJobId: string): Promise<AIJobStatus> => {
     const response = await api.get<AIJobStatus>(`/content/jobs/${aiJobId}`);
+    return response.data;
+  },
+};
+
+// Phase 7 — dashboard stats & post listing
+export const postService = {
+  /** GET /posts/stats → aggregated dashboard counts. */
+  getStats: async (): Promise<DashboardStats> => {
+    const response = await api.get<DashboardStats>("/posts/stats");
+    return response.data;
+  },
+
+  /** GET /posts → paginated list with optional filters. */
+  list: async (filters: PostsFilter = {}): Promise<PostsPage> => {
+    const params: Record<string, string> = {};
+    if (filters.status) params.status = filters.status;
+    if (filters.type) params.type = filters.type;
+    if (filters.from) params.from = filters.from;
+    if (filters.to) params.to = filters.to;
+    if (filters.page != null) params.page = String(filters.page);
+    if (filters.limit != null) params.limit = String(filters.limit);
+    const response = await api.get<PostsPage>("/posts", { params });
+    return response.data;
+  },
+
+  /** GET /posts/:id/download → validates ownership, returns mediaUrl. */
+  getDownloadInfo: async (postId: string): Promise<PostMediaInfo> => {
+    const response = await api.get<PostMediaInfo>(`/posts/${postId}/download`);
     return response.data;
   },
 };

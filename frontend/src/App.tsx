@@ -5,6 +5,7 @@ import { DashboardPage } from "@/pages/dashboard/DashboardPage";
 import { CompanyFormPage } from "@/pages/company/CompanyFormPage";
 import { StrategyPage } from "@/pages/strategy/StrategyPage";
 import { CalendarPage } from "@/pages/calendar/CalendarPage";
+import { ContentPage } from "@/pages/content/ContentPage";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { useTheme, type Theme } from "@/hooks/useTheme";
 
@@ -94,6 +95,14 @@ export default function App() {
           element={
             <PrivateLayout>
               <CalendarPage />
+            </PrivateLayout>
+          }
+        />
+        <Route
+          path="/content"
+          element={
+            <PrivateLayout>
+              <ContentPage />
             </PrivateLayout>
           }
         />
