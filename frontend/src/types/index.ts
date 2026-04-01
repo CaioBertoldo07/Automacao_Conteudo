@@ -114,3 +114,10 @@ export interface CalendarEntry {
   createdAt: string;
   post: Post | null;
 }
+
+export interface BatchGenerateResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: Array<{ id: string; status: string; error?: string }>;
+}

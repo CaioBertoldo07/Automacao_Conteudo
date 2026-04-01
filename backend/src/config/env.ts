@@ -25,4 +25,6 @@ export const env = {
 
   anthropicApiKey: optional("ANTHROPIC_API_KEY", ""),
   googleApiKey: optional("GOOGLE_API_KEY", ""),
+  googleImageModel: optional("GOOGLE_IMAGE_MODEL", "gemini-2.5-flash-image"),
+  veoApiKey: optional("VEO_API_KEY", ""),
 } as const;

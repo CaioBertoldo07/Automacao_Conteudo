@@ -9,6 +9,7 @@ import type {
   UpdateCompanyRequest,
   ContentStrategy,
   CalendarEntry,
+  BatchGenerateResult,
 } from "@/types";
 
 const api = axios.create({
@@ -137,6 +138,20 @@ export const calendarService = {
 
   remove: async (id: string): Promise<void> => {
     await api.delete(`/calendars/${id}`);
+  },
+};
+
+export const contentService = {
+  generateOne: async (calendarEntryId: string): Promise<CalendarEntry> => {
+    const response = await api.post<CalendarEntry>(
+      `/content/${calendarEntryId}/generate`
+    );
+    return response.data;
+  },
+
+  generateBatch: async (): Promise<BatchGenerateResult> => {
+    const response = await api.post<BatchGenerateResult>("/content/batch");
+    return response.data;
   },
 };
 

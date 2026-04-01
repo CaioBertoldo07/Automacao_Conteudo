@@ -53,7 +53,8 @@ export async function generateCalendar(prisma: PrismaClient, userId: string) {
     const date = new Date(startDate);
     date.setDate(date.getDate() + Math.round(i * intervalDays));
 
-    const idea = postIdeas[i % postIdeas.length];
+    const ideaIndex = postIdeas.length > 0 ? i % postIdeas.length : 0;
+    const idea = postIdeas[ideaIndex];
     const type = (idea?.format as ContentType) ?? ContentType.IMAGE;
 
     return {
@@ -61,6 +62,7 @@ export async function generateCalendar(prisma: PrismaClient, userId: string) {
       date,
       type,
       status: JobStatus.PENDING,
+      postIdeaIndex: ideaIndex,
     };
   });
 

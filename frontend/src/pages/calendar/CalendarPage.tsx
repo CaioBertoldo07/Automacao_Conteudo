@@ -12,11 +12,14 @@ import {
   BookImage,
   Trash2,
   X,
+  Sparkles,
+  Layers,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useMyCalendar, useGenerateCalendar, useDeleteCalendarEntry } from "@/hooks/useCalendar";
-import type { CalendarEntry, ContentType } from "@/types";
+import { useGenerateContent, useGenerateBatch } from "@/hooks/useContent";
+import type { BatchGenerateResult, CalendarEntry, ContentType } from "@/types";
 
 const TYPE_CONFIG: Record<ContentType, { label: string; color: string; icon: React.ReactNode }> = {
   IMAGE: {
@@ -47,17 +50,25 @@ export function CalendarPage() {
   const { data: entries = [], isLoading } = useMyCalendar();
   const generate = useGenerateCalendar();
   const remove = useDeleteCalendarEntry();
+  const generateContent = useGenerateContent();
+  const generateBatch = useGenerateBatch();
 
   const [selected, setSelected] = useState<CalendarEntry | null>(null);
   const [apiError, setApiError] = useState("");
+  const [batchResult, setBatchResult] = useState<BatchGenerateResult | null>(null);
+
+  const pendingCount = entries.filter((e) => e.status === "PENDING").length;
 
   const handleGenerate = async () => {
     setApiError("");
+    setBatchResult(null);
     try {
       await generate.mutateAsync();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setApiError(msg ?? "Erro ao gerar calendário. Certifique-se de que a estratégia está aprovada.");
+      setApiError(
+        msg ?? "Erro ao gerar calendário. Certifique-se de que a estratégia está aprovada."
+      );
     }
   };
 
@@ -68,6 +79,29 @@ export function CalendarPage() {
       setSelected(null);
     } catch {
       setApiError("Erro ao remover entrada do calendário.");
+    }
+  };
+
+  const handleGenerateContent = async (id: string) => {
+    setApiError("");
+    try {
+      const updated = await generateContent.mutateAsync(id);
+      setSelected(updated);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setApiError(msg ?? "Erro ao gerar conteúdo para este item.");
+    }
+  };
+
+  const handleGenerateBatch = async () => {
+    setApiError("");
+    setBatchResult(null);
+    try {
+      const result = await generateBatch.mutateAsync();
+      setBatchResult(result);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setApiError(msg ?? "Erro ao gerar conteúdo em lote.");
     }
   };
 
@@ -90,15 +124,41 @@ export function CalendarPage() {
             Agenda de posts gerada a partir da estratégia aprovada.
           </p>
         </div>
-        <Button onClick={handleGenerate} loading={generate.isPending} variant="outline" size="sm">
-          <RefreshCw className="h-3.5 w-3.5" />
-          {entries.length > 0 ? "Regen. calendário" : "Gerar calendário"}
-        </Button>
+        <div className="flex items-center gap-2">
+          {pendingCount > 0 && (
+            <Button
+              onClick={handleGenerateBatch}
+              loading={generateBatch.isPending}
+              variant="outline"
+              size="sm"
+            >
+              <Layers className="h-3.5 w-3.5" />
+              Gerar lote ({pendingCount})
+            </Button>
+          )}
+          <Button
+            onClick={handleGenerate}
+            loading={generate.isPending}
+            variant="outline"
+            size="sm"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            {entries.length > 0 ? "Regen. calendário" : "Gerar calendário"}
+          </Button>
+        </div>
       </div>
 
       {apiError && (
         <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {apiError}
+        </div>
+      )}
+
+      {batchResult && (
+        <div className="mb-6 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          Lote concluído — {batchResult.succeeded} gerados com sucesso
+          {batchResult.failed > 0 && `, ${batchResult.failed} com falha`} de{" "}
+          {batchResult.total} total.
         </div>
       )}
 
@@ -133,21 +193,24 @@ export function CalendarPage() {
 
             {/* Legend */}
             <div className="mt-4 flex flex-wrap gap-4">
-              {(Object.entries(TYPE_CONFIG) as [ContentType, typeof TYPE_CONFIG[ContentType]][]).map(
-                ([type, cfg]) => (
-                  <div key={type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: cfg.color }}
-                    />
-                    {cfg.label}
-                  </div>
-                )
-              )}
+              {(
+                Object.entries(TYPE_CONFIG) as [ContentType, (typeof TYPE_CONFIG)[ContentType]][]
+              ).map(([type, cfg]) => (
+                <div
+                  key={type}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: cfg.color }}
+                  />
+                  {cfg.label}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Sidebar — entry detail or list */}
+          {/* Sidebar */}
           <div className="space-y-4">
             {selected ? (
               <EntryDetail
@@ -155,6 +218,8 @@ export function CalendarPage() {
                 onClose={() => setSelected(null)}
                 onDelete={handleDelete}
                 deleting={remove.isPending}
+                onGenerate={handleGenerateContent}
+                generating={generateContent.isPending}
               />
             ) : (
               <UpcomingList entries={entries} onSelect={setSelected} />
@@ -216,13 +281,18 @@ function EntryDetail({
   onClose,
   onDelete,
   deleting,
+  onGenerate,
+  generating,
 }: {
   entry: CalendarEntry;
   onClose: () => void;
   onDelete: (id: string) => void;
   deleting: boolean;
+  onGenerate: (id: string) => void;
+  generating: boolean;
 }) {
   const cfg = TYPE_CONFIG[entry.type];
+  const canGenerate = entry.status === "PENDING" || entry.status === "FAILED";
 
   return (
     <Card>
@@ -252,28 +322,63 @@ function EntryDetail({
             })}
           </p>
         </div>
+
         <div>
           <p className="text-xs font-medium text-foreground/70">Status</p>
           <p className="text-sm text-muted-foreground">{STATUS_LABEL[entry.status]}</p>
         </div>
-        {entry.post && (
+
+        {entry.post?.caption && (
           <div>
             <p className="text-xs font-medium text-foreground/70">Legenda</p>
-            <p className="line-clamp-3 text-sm text-muted-foreground">{entry.post.caption}</p>
+            <p className="line-clamp-4 text-sm text-muted-foreground">{entry.post.caption}</p>
           </div>
         )}
-        {entry.status === "PENDING" && (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => onDelete(entry.id)}
-            loading={deleting}
-            className="w-full"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            Remover do calendário
-          </Button>
+
+        {entry.post?.hashtags && (
+          <div>
+            <p className="text-xs font-medium text-foreground/70">Hashtags</p>
+            <p className="line-clamp-2 text-xs text-muted-foreground">{entry.post.hashtags}</p>
+          </div>
         )}
+
+        {entry.post?.mediaUrl && (
+          <div>
+            <p className="mb-1 text-xs font-medium text-foreground/70">Mídia gerada</p>
+            <img
+              src={entry.post.mediaUrl}
+              alt="Mídia gerada"
+              className="w-full rounded-md object-cover"
+              style={{ maxHeight: "200px" }}
+            />
+          </div>
+        )}
+
+        <div className="flex flex-col gap-2 pt-1">
+          {canGenerate && (
+            <Button
+              size="sm"
+              onClick={() => onGenerate(entry.id)}
+              loading={generating}
+              className="w-full"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Gerar conteúdo
+            </Button>
+          )}
+          {entry.status === "PENDING" && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => onDelete(entry.id)}
+              loading={deleting}
+              className="w-full"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Remover do calendário
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -288,9 +393,7 @@ function UpcomingList({
   entries: CalendarEntry[];
   onSelect: (entry: CalendarEntry) => void;
 }) {
-  const upcoming = entries
-    .filter((e) => new Date(e.date) >= new Date())
-    .slice(0, 8);
+  const upcoming = entries.filter((e) => new Date(e.date) >= new Date()).slice(0, 8);
 
   return (
     <Card>

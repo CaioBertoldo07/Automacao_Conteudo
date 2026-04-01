@@ -54,11 +54,12 @@ model BrandProfile {
 }
 
 model ContentCalendar {
-  id        String      @id @default(uuid())
-  date      DateTime
-  type      ContentType
-  status    JobStatus   @default(PENDING)
-  createdAt DateTime    @default(now())
+  id            String      @id @default(uuid())
+  date          DateTime
+  type          ContentType
+  status        JobStatus   @default(PENDING)
+  postIdeaIndex Int?
+  createdAt     DateTime    @default(now())
 
   companyId String
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
