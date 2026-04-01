@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -19,7 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { useMyCalendar, useGenerateCalendar, useDeleteCalendarEntry } from "@/hooks/useCalendar";
 import { useGenerateContent, useGenerateBatch } from "@/hooks/useContent";
-import type { BatchGenerateResult, CalendarEntry, ContentType } from "@/types";
+import type { BatchEnqueueResult, CalendarEntry, ContentType } from "@/types";
 
 const TYPE_CONFIG: Record<ContentType, { label: string; color: string; icon: React.ReactNode }> = {
   IMAGE: {
@@ -55,7 +55,49 @@ export function CalendarPage() {
 
   const [selected, setSelected] = useState<CalendarEntry | null>(null);
   const [apiError, setApiError] = useState("");
-  const [batchResult, setBatchResult] = useState<BatchGenerateResult | null>(null);
+  const [batchResult, setBatchResult] = useState<BatchEnqueueResult | null>(null);
+
+  // Phase 6: Map of calendarEntryId → aiJobId for all in-flight jobs.
+  // Supports multiple simultaneous generateOne calls without overwriting state.
+  const [pendingJobs, setPendingJobs] = useState<Map<string, string>>(new Map());
+  // Per-entry error messages surfaced after worker failure.
+  const [jobErrors, setJobErrors] = useState<Map<string, string>>(new Map());
+
+  // React to calendar entry status changes to clear pending jobs and collect errors.
+  // Dependencies are explicit — no eslint-disable needed.
+  useEffect(() => {
+    if (pendingJobs.size === 0) return;
+
+    const terminal = entries.filter(
+      (e) => pendingJobs.has(e.id) && (e.status === "DONE" || e.status === "FAILED")
+    );
+    if (terminal.length === 0) return;
+
+    // Remove completed entries from the pending map.
+    setPendingJobs((prev) => {
+      const next = new Map(prev);
+      for (const e of terminal) next.delete(e.id);
+      return next;
+    });
+
+    // If the currently selected entry just completed, update it.
+    const doneSelected = terminal.find((e) => e.id === selected?.id);
+    if (doneSelected) {
+      setSelected(doneSelected);
+    }
+
+    // Collect per-entry error messages for FAILED entries.
+    const failedEntries = terminal.filter((e) => e.status === "FAILED");
+    if (failedEntries.length > 0) {
+      setJobErrors((prev) => {
+        const next = new Map(prev);
+        for (const e of failedEntries) {
+          next.set(e.id, "A geração falhou. Tente novamente.");
+        }
+        return next;
+      });
+    }
+  }, [entries, pendingJobs, selected]);
 
   const pendingCount = entries.filter((e) => e.status === "PENDING").length;
 
@@ -83,10 +125,14 @@ export function CalendarPage() {
   };
 
   const handleGenerateContent = async (id: string) => {
+    if (pendingJobs.has(id)) return; // already in flight for this entry
     setApiError("");
+    setJobErrors((prev) => { const m = new Map(prev); m.delete(id); return m; });
     try {
-      const updated = await generateContent.mutateAsync(id);
-      setSelected(updated);
+      const { aiJobId } = await generateContent.mutateAsync(id);
+      // 202 received — register this entry as in-flight.
+      // useMyCalendar auto-polls via refetchInterval while entries are PROCESSING.
+      setPendingJobs((prev) => new Map(prev).set(id, aiJobId));
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setApiError(msg ?? "Erro ao gerar conteúdo para este item.");
@@ -99,6 +145,7 @@ export function CalendarPage() {
     try {
       const result = await generateBatch.mutateAsync();
       setBatchResult(result);
+      // useMyCalendar auto-polls via refetchInterval while entries are PROCESSING.
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       setApiError(msg ?? "Erro ao gerar conteúdo em lote.");
@@ -155,10 +202,31 @@ export function CalendarPage() {
       )}
 
       {batchResult && (
-        <div className="mb-6 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
-          Lote concluído — {batchResult.succeeded} gerados com sucesso
-          {batchResult.failed > 0 && `, ${batchResult.failed} com falha`} de{" "}
-          {batchResult.total} total.
+        <div className="mb-6 space-y-1 rounded-lg border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-400">
+          <p>
+            {batchResult.queued}{" "}
+            {batchResult.queued === 1 ? "item enfileirado" : "itens enfileirados"} — processamento em andamento.
+            {batchResult.failed > 0 && (
+              <span className="ml-2 text-yellow-400">
+                {batchResult.failed} com falha.
+              </span>
+            )}
+          </p>
+          {batchResult.failed > 0 && (() => {
+            const failedItems = batchResult.items.filter((i) => i.status === "failed");
+            const shown = failedItems.slice(0, 3);
+            const extra = failedItems.length - shown.length;
+            return (
+              <ul className="mt-1 space-y-0.5 text-xs text-yellow-400/80">
+                {shown.map((item) => (
+                  <li key={item.calendarEntryId} className="truncate">
+                    · {item.calendarEntryId.slice(0, 8)}… — {item.error ?? "erro desconhecido"}
+                  </li>
+                ))}
+                {extra > 0 && <li>· +{extra} {extra === 1 ? "falha adicional" : "falhas adicionais"}</li>}
+              </ul>
+            );
+          })()}
         </div>
       )}
 
@@ -220,6 +288,8 @@ export function CalendarPage() {
                 deleting={remove.isPending}
                 onGenerate={handleGenerateContent}
                 generating={generateContent.isPending}
+                isPolling={pendingJobs.has(selected.id)}
+                jobError={jobErrors.get(selected.id)}
               />
             ) : (
               <UpcomingList entries={entries} onSelect={setSelected} />
@@ -340,6 +410,8 @@ function EntryDetail({
   deleting,
   onGenerate,
   generating,
+  isPolling,
+  jobError,
 }: {
   entry: CalendarEntry;
   onClose: () => void;
@@ -347,6 +419,8 @@ function EntryDetail({
   deleting: boolean;
   onGenerate: (id: string) => void;
   generating: boolean;
+  isPolling: boolean;
+  jobError?: string;
 }) {
   const cfg = TYPE_CONFIG[entry.type];
   const canGenerate = entry.status === "PENDING" || entry.status === "FAILED";
@@ -407,7 +481,18 @@ function EntryDetail({
         )}
 
         <div className="flex flex-col gap-2 pt-1">
-          {canGenerate && (
+          {jobError && (
+            <p className="rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-400">
+              {jobError}
+            </p>
+          )}
+          {isPolling && (
+            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+              Processando em background…
+            </div>
+          )}
+          {canGenerate && !isPolling && (
             <Button
               size="sm"
               onClick={() => onGenerate(entry.id)}

@@ -9,7 +9,9 @@ import type {
   UpdateCompanyRequest,
   ContentStrategy,
   CalendarEntry,
-  BatchGenerateResult,
+  EnqueueResult,
+  BatchEnqueueResult,
+  AIJobStatus,
 } from "@/types";
 
 const api = axios.create({
@@ -142,15 +144,23 @@ export const calendarService = {
 };
 
 export const contentService = {
-  generateOne: async (calendarEntryId: string): Promise<CalendarEntry> => {
-    const response = await api.post<CalendarEntry>(
+  /** POST → 202: enqueues generation, returns immediately with aiJobId. */
+  generateOne: async (calendarEntryId: string): Promise<EnqueueResult> => {
+    const response = await api.post<EnqueueResult>(
       `/content/${calendarEntryId}/generate`
     );
     return response.data;
   },
 
-  generateBatch: async (): Promise<BatchGenerateResult> => {
-    const response = await api.post<BatchGenerateResult>("/content/batch");
+  /** POST → 202: enqueues all pending entries. */
+  generateBatch: async (): Promise<BatchEnqueueResult> => {
+    const response = await api.post<BatchEnqueueResult>("/content/batch");
+    return response.data;
+  },
+
+  /** GET: polls job status by aiJobId. */
+  getJobStatus: async (aiJobId: string): Promise<AIJobStatus> => {
+    const response = await api.get<AIJobStatus>(`/content/jobs/${aiJobId}`);
     return response.data;
   },
 };

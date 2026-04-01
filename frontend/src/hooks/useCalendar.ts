@@ -10,6 +10,13 @@ export function useMyCalendar() {
     queryKey: CALENDAR_KEYS.me,
     queryFn: () => calendarService.getMyCalendar(),
     staleTime: 1000 * 60 * 5,
+    // Phase 6: auto-poll every 3s while any entry is being processed by a worker.
+    refetchInterval: (query) => {
+      const entries = query.state.data;
+      if (!entries) return false;
+      const hasProcessing = entries.some((e) => e.status === "PROCESSING");
+      return hasProcessing ? 3_000 : false;
+    },
   });
 }
 

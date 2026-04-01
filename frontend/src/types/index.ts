@@ -121,3 +121,31 @@ export interface BatchGenerateResult {
   failed: number;
   results: Array<{ id: string; status: string; error?: string }>;
 }
+
+// Phase 6 — async queue responses
+export interface EnqueueResult {
+  aiJobId: string;
+  queueJobId: string;
+  calendarEntryId: string;
+}
+
+export interface BatchEnqueueItemResult {
+  calendarEntryId: string;
+  aiJobId?: string;
+  status: "queued" | "failed";
+  error?: string;
+}
+
+export interface BatchEnqueueResult {
+  total: number;
+  queued: number;
+  failed: number;
+  items: BatchEnqueueItemResult[];
+}
+
+export interface AIJobStatus {
+  id: string;
+  status: JobStatus;
+  result: Record<string, unknown> | null;
+  error: string | null;
+}

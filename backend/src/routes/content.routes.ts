@@ -10,7 +10,8 @@ export async function contentRoutes(
   const c = makeContentController(options.prisma);
   const auth = { preHandler: [authMiddleware] };
 
-  // Static route registered before the parametric one to avoid collision
+  // Static routes registered before parametric ones to avoid collision.
   fastify.post("/content/batch", auth, c.generateBatchHandler.bind(c));
   fastify.post("/content/:id/generate", auth, c.generateOne.bind(c));
+  fastify.get("/content/jobs/:aiJobId", auth, c.getJobStatusHandler.bind(c));
 }

@@ -5,17 +5,20 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "worker": "tsx watch src/worker.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "worker:start": "node dist/worker.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.0",
     "@fastify/cors": "^11.2.0",
+    "@google/generative-ai": "^0.24.0",
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.72.0",
     "dotenv": "^16.4.5",
     "fastify": "^5.8.4",
     "jsonwebtoken": "^9.0.2",
