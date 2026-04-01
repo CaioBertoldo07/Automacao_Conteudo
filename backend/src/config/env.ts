@@ -1,4 +1,5 @@
 import "dotenv/config";
+import path from "path";
 
 function required(key: string): string {
   const value = process.env[key];
@@ -27,4 +28,9 @@ export const env = {
   googleApiKey: optional("GOOGLE_API_KEY", ""),
   googleImageModel: optional("GOOGLE_IMAGE_MODEL", "gemini-2.5-flash-image"),
   veoApiKey: optional("VEO_API_KEY", ""),
+
+  // Local filesystem storage for generated media (Phase 5).
+  // MEDIA_DIR: absolute or relative path to the uploads folder.
+  // Relative paths are resolved from the current working directory (project root).
+  mediaDir: path.resolve(optional("MEDIA_DIR", "uploads")),
 } as const;

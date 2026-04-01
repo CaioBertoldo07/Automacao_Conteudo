@@ -274,6 +274,63 @@ function FullCalendarWrapper({
   );
 }
 
+/* ─── Media helpers ──────────────────────────────────────────── */
+
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mov", ".m4v"]);
+
+function isVideoUrl(url: string): boolean {
+  try {
+    const pathname = new URL(url, "http://x").pathname;
+    const ext = pathname.slice(pathname.lastIndexOf(".")).toLowerCase();
+    return VIDEO_EXTENSIONS.has(ext);
+  } catch {
+    return false;
+  }
+}
+
+function MediaPreview({
+  mediaUrl,
+  isReelFallback,
+}: {
+  mediaUrl: string;
+  isReelFallback: boolean;
+}) {
+  const [videoError, setVideoError] = useState(false);
+  const showVideo = isVideoUrl(mediaUrl) && !videoError;
+
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium text-foreground/70">Mídia gerada</p>
+      {showVideo ? (
+        <video
+          controls
+          preload="metadata"
+          className="w-full rounded-md object-cover"
+          style={{ maxHeight: "260px" }}
+          onError={() => setVideoError(true)}
+        >
+          <source src={mediaUrl} type="video/mp4" />
+          Seu navegador não suporta reprodução de vídeo.
+        </video>
+      ) : (
+        <>
+          <img
+            src={mediaUrl}
+            alt="Mídia gerada"
+            className="w-full rounded-md object-cover"
+            style={{ maxHeight: "200px" }}
+          />
+          {isReelFallback && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Vídeo indisponível no momento. Exibindo imagem fallback.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ─── Entry detail panel ─────────────────────────────────────── */
 
 function EntryDetail({
@@ -343,15 +400,10 @@ function EntryDetail({
         )}
 
         {entry.post?.mediaUrl && (
-          <div>
-            <p className="mb-1 text-xs font-medium text-foreground/70">Mídia gerada</p>
-            <img
-              src={entry.post.mediaUrl}
-              alt="Mídia gerada"
-              className="w-full rounded-md object-cover"
-              style={{ maxHeight: "200px" }}
-            />
-          </div>
+          <MediaPreview
+            mediaUrl={entry.post.mediaUrl}
+            isReelFallback={entry.type === "REEL" && !isVideoUrl(entry.post.mediaUrl)}
+          />
         )}
 
         <div className="flex flex-col gap-2 pt-1">

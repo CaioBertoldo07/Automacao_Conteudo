@@ -38,3 +38,7 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Mídia gerada (Fase 5)
+backend/uploads/*
+!backend/uploads/.gitkeep

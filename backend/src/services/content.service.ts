@@ -105,6 +105,7 @@ export async function generatePostContent(
     };
 
     let mediaUrl: string | null = null;
+    let mediaFallbackReason: string | undefined;
 
     try {
       if (entry.type === ContentType.REEL) {
@@ -119,7 +120,8 @@ export async function generatePostContent(
           const uploaded = await uploadMedia(videoResult.base64, videoResult.mimeType);
           mediaUrl = uploaded.publicUrl;
         } else {
-          // Fallback: static image for REEL when Veo is unavailable
+          // Fallback: static image for REEL when Veo is unavailable.
+          mediaFallbackReason = videoResult.reason;
           const imageResult = await generateImage(mediaInput);
           const uploaded = await uploadMedia(imageResult.base64, imageResult.mimeType);
           mediaUrl = uploaded.publicUrl;
@@ -168,7 +170,10 @@ export async function generatePostContent(
       where: { id: aiJob.id },
       data: {
         status: JobStatus.DONE,
-        result: { postId: updatedEntry.post?.id ?? null } as object,
+        result: {
+          postId: updatedEntry.post?.id ?? null,
+          ...(mediaFallbackReason ? { mediaFallback: mediaFallbackReason } : {}),
+        } as object,
       },
     });
 
