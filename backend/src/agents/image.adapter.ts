@@ -34,16 +34,24 @@ function isBlobPart(p: unknown): p is BlobPart {
 function buildImagePrompt(input: ImageGenerationInput): string {
   const aspectNote = input.format === "IMAGE" ? "square 1:1" : "vertical 9:16";
 
-  return `Professional Instagram marketing image for a Brazilian small business.
+  return `Photorealistic professional photograph for an Instagram post. Shot with a high-end DSLR camera.
 
 Business: ${input.companyName}
 Industry: ${input.niche}
 Post concept: ${input.postTitle}
 Visual concept: ${input.postDescription}
 Brand tone: ${input.brandTone}
-Format: ${aspectNote}
+Aspect ratio: ${aspectNote}
 
-Style: modern, clean, vibrant, professional. No text overlay. Instagram-ready. High quality.`;
+REQUIREMENTS:
+- Photorealistic. Must look like a real photograph taken by a professional photographer, not AI-generated.
+- Natural lighting. Shallow depth of field. Bokeh background where appropriate.
+- Real people, real environments, real objects. No CGI, no illustration, no digital art.
+- Absolutely NO text, NO words, NO letters, NO numbers, NO watermarks, NO logos anywhere in the image.
+- Colors are natural and vivid but not over-processed.
+- Composition: rule of thirds, Instagram-ready, visually engaging.
+- Style reference: editorial photography, lifestyle brand campaign.
+- Brazilian context and aesthetic when showing people or environments.`;
 }
 
 export async function generateImage(

@@ -9,6 +9,9 @@ export interface VideoGenerationInput {
   niche: string;
   postTitle: string;
   postDescription: string;
+  /** Optional keyframe image to anchor the video. Makes output significantly more realistic. */
+  imageBase64?: string;
+  imageMimeType?: string;
 }
 
 // Veo 3 via Google AI REST API (same key as GOOGLE_API_KEY / VEO_API_KEY).
@@ -23,14 +26,22 @@ const POLL_TIMEOUT_MS = 90_000;
 const POLL_INTERVAL_MS = 8_000;
 
 function buildVideoPrompt(input: VideoGenerationInput): string {
-  return `Short professional Instagram Reel for a Brazilian small business.
+  return `Cinematic photorealistic Instagram Reel video. Shot on a professional cinema camera.
 
 Business: ${input.companyName}
 Industry: ${input.niche}
 Post concept: ${input.postTitle}
 Visual concept: ${input.postDescription}
 
-Style: modern, vibrant, clean, professional. No text overlay. 9:16 vertical format. Instagram-ready. High quality. 8 seconds.`;
+REQUIREMENTS:
+- Photorealistic. Must look like real footage filmed by a professional videographer, not AI-generated.
+- Cinematic quality: natural lighting, shallow depth of field, smooth camera movement.
+- Real people, real environments, real objects. No CGI, no animation, no digital effects.
+- Absolutely NO text, NO words, NO letters, NO numbers, NO watermarks, NO subtitles, NO captions anywhere in the video.
+- Colors graded naturally. Warm tones. Engaging and authentic.
+- 9:16 vertical format optimized for Instagram Reels. 8 seconds.
+- Brazilian context and aesthetic when showing people or environments.
+- Style reference: lifestyle brand commercial, documentary-style cinematography.`;
 }
 
 interface OperationResponse {
@@ -51,14 +62,26 @@ interface OperationResponse {
   };
 }
 
-async function startVideoGeneration(prompt: string, apiKey: string): Promise<string> {
+async function startVideoGeneration(
+  prompt: string,
+  apiKey: string,
+  imageBase64?: string,
+  imageMimeType?: string,
+): Promise<string> {
   const url = `${BASE_URL}/models/${VEO_MODEL}:predictLongRunning?key=${apiKey}`;
+
+  // When an image is provided, Veo uses it as the first frame (image-to-video).
+  // This produces significantly more realistic and grounded output.
+  const instance: Record<string, unknown> = { prompt };
+  if (imageBase64 && imageMimeType) {
+    instance.image = { bytesBase64Encoded: imageBase64, mimeType: imageMimeType };
+  }
 
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      instances: [{ prompt }],
+      instances: [instance],
       parameters: { aspectRatio: "9:16", durationSeconds: 8 },
     }),
   });
@@ -137,7 +160,12 @@ export async function generateVideo(input: VideoGenerationInput): Promise<VideoR
 
   try {
     const prompt = buildVideoPrompt(input);
-    const operationName = await startVideoGeneration(prompt, apiKey);
+    const operationName = await startVideoGeneration(
+      prompt,
+      apiKey,
+      input.imageBase64,
+      input.imageMimeType,
+    );
     const operation = await pollOperation(operationName, apiKey);
 
     // Support both response shapes: new (generateVideoResponse wrapper) and legacy (flat)

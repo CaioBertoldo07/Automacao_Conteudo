@@ -347,20 +347,27 @@ export async function processPostContent(
 
     try {
       if (entry.type === ContentType.REEL) {
+        // Step 1: Generate a photorealistic keyframe image first.
+        // This image anchors the Veo video generation, producing much more realistic output.
+        // It also serves as the fallback if Veo fails or times out.
+        const keyframeImage = await generateImage({ ...mediaInput, format: "REEL" });
+
         const videoResult = await generateVideo({
           companyName: company.name,
           niche: company.niche,
           postTitle: postIdea.title,
           postDescription: postIdea.description,
+          imageBase64: keyframeImage.base64,
+          imageMimeType: keyframeImage.mimeType,
         });
 
         if (videoResult.available) {
           const uploaded = await uploadMedia(videoResult.base64, videoResult.mimeType);
           mediaUrl = uploaded.publicUrl;
         } else {
+          // Veo failed — reuse the already-generated keyframe image (no extra API call).
           mediaFallbackReason = videoResult.reason;
-          const imageResult = await generateImage(mediaInput);
-          const uploaded = await uploadMedia(imageResult.base64, imageResult.mimeType);
+          const uploaded = await uploadMedia(keyframeImage.base64, keyframeImage.mimeType);
           mediaUrl = uploaded.publicUrl;
         }
       } else {
