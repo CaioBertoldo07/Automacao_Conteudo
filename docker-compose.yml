@@ -19,9 +19,33 @@ services:
       APP_PORT: "8000"
       CORS_ORIGINS: http://localhost:5173
       REDIS_URL: redis://redis:6379
+      MEDIA_DIR: /app/uploads
     ports:
       - "8000:8000"
+    volumes:
+      - media_uploads:/app/uploads
     command: sh -c "npx prisma db push && node dist/server.js"
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: autoconteudo_worker
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/autoconteudo
+      REDIS_URL: redis://redis:6379
+      MEDIA_DIR: /app/uploads
+    volumes:
+      - media_uploads:/app/uploads
+    command: node dist/worker.js
     restart: unless-stopped
 
   postgres:
@@ -54,3 +78,4 @@ services:
 
 volumes:
   postgres_data:
+  media_uploads:
