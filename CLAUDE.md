@@ -14,11 +14,10 @@ Este projeto é um **SaaS de automação de conteúdo para Instagram usando múl
 
 O sistema funciona como um **orquestrador de IA**, onde:
 
-* Claude → planejamento e estratégia
-* Gemini → geração de imagens
-* Veo → geração de vídeos
+- Gemini → geração de estratégia, legendas e imagens
+- Veo → geração de vídeos (Reels)
 
-O backend coordena toda a execução usando **filas e workers**.
+O backend coordena toda a execução usando **filas BullMQ + Redis e workers assíncronos**.
 
 ---
 
@@ -26,10 +25,10 @@ O backend coordena toda a execução usando **filas e workers**.
 
 Antes de qualquer alteração no código, leia sempre:
 
-* planejamento.md
-* arquitetura.md
-* banco.md
-* desenvolvimento.md
+- planejamento.md
+- arquitetura.md
+- banco.md
+- desenvolvimento.md
 
 Esses arquivos são a **fonte oficial da arquitetura**.
 
@@ -37,52 +36,54 @@ Nunca ignore essas definições.
 
 ---
 
-# 3. Stack Tecnológica Obrigatória
+# 3. Stack Tecnológica
 
 ## Backend
 
-* Python
-* FastAPI
-* PostgreSQL
-* Prisma ORM
-* Redis
-* Workers assíncronos
+- **TypeScript**
+- **Fastify** (framework HTTP)
+- PostgreSQL
+- Prisma ORM
+- Redis + BullMQ (filas e workers)
 
 ---
 
 ## Frontend
 
-* React
-* TypeScript
-* Vite
-* TailwindCSS
-* shadcn/ui
+- React
+- TypeScript
+- Vite
+- TailwindCSS
+- Radix UI (componentes primitivos)
 
 Bibliotecas padrão:
 
-* TanStack Query
-* Recharts
-* FullCalendar
+- TanStack Query
+- Recharts
+- FullCalendar
 
 ---
 
 # 4. Estrutura do Repositório
 
-A estrutura do projeto deve seguir este padrão:
+A estrutura real do projeto é:
 
 ```
 backend/
-    app/
-        main.py
+    src/
+        app.ts
+        server.ts
+        worker.ts
         config/
         routes/
+        controllers/
         services/
-        models/
-        schemas/
-        utils/
-        workers/
         agents/
-        scheduler/
+        queues/
+        workers/
+        middlewares/
+        utils/
+        types/
 
     prisma/
         schema.prisma
@@ -95,8 +96,6 @@ frontend/
         hooks/
         types/
         utils/
-
-docs/
 ```
 
 Nunca criar arquivos fora dessa organização sem justificativa.
@@ -117,9 +116,9 @@ Nunca implementar funcionalidades de fases futuras sem necessidade.
 
 Explicar sempre:
 
-* o que será criado
-* por que está sendo criado
-* onde será criado
+- o que será criado
+- por que está sendo criado
+- onde será criado
 
 Antes de gerar código.
 
@@ -131,9 +130,9 @@ Gerar código **modular e escalável**.
 
 Evitar:
 
-* arquivos gigantes
-* lógica de negócio dentro de rotas
-* repetição de código
+- arquivos gigantes
+- lógica de negócio dentro de rotas
+- repetição de código
 
 ---
 
@@ -155,7 +154,7 @@ Representação de dados.
 
 ### Schemas
 
-Validação de dados (Pydantic).
+Validação de dados (Zod).
 
 ---
 
@@ -165,9 +164,12 @@ Validação de dados (Pydantic).
 
 ```
 routes/
-    auth_routes.py
-    company_routes.py
-    post_routes.py
+    auth.routes.ts
+    company.routes.ts
+    strategy.routes.ts
+    calendar.routes.ts
+    content.routes.ts
+    user.routes.ts
 ```
 
 ---
@@ -176,20 +178,24 @@ routes/
 
 ```
 services/
-    auth_service.py
-    company_service.py
-    content_service.py
+    auth.service.ts
+    company.service.ts
+    strategy.service.ts
+    calendar.service.ts
+    content.service.ts
+    user.service.ts
 ```
 
 ---
 
-## Schemas
+## Agents
 
 ```
-schemas/
-    user_schema.py
-    company_schema.py
-    post_schema.py
+agents/
+    claude.agent.ts      ← estratégia de conteúdo (Gemini)
+    content.agent.ts     ← geração de legendas (Gemini)
+    image.adapter.ts     ← geração de imagens (Gemini)
+    video.adapter.ts     ← geração de vídeos (Veo)
 ```
 
 ---
@@ -227,11 +233,24 @@ Nunca misturar lógica de IA diretamente nas rotas.
 
 Sempre usar **agents ou services dedicados**.
 
-Exemplo:
+Agents implementados:
 
 ```
 agents/
-    claude_agent.py
+    claude.agent.ts      ← geração de estratégia via Gemini
+    content.agent.ts     ← geração de legendas e hashtags via Gemini
+    image.adapter.ts     ← geração de imagens via Gemini imagen
+    video.adapter.ts     ← geração de vídeos via Veo 3
+```
+
+Fila de jobs:
+
+```
+queues/
+    content.queue.ts     ← BullMQ queue para geração de conteúdo
+
+workers/
+    content.worker.ts    ← BullMQ worker (concorrência 3)
 ```
 
 ---
@@ -264,20 +283,14 @@ backend/prisma/schema.prisma
 
 # 11. Padrões de Código
 
-## Python
+## TypeScript (backend e frontend)
 
-* usar tipagem sempre que possível
-* funções pequenas
-* nomes claros
-* evitar lógica complexa dentro de rotas
-
----
-
-## TypeScript
-
-* tipagem obrigatória
-* evitar any
-* usar interfaces
+- tipagem obrigatória
+- evitar `any`
+- usar interfaces e tipos explícitos
+- validar com Zod nas fronteiras da API
+- funções pequenas e com nomes claros
+- evitar lógica complexa dentro de controllers
 
 ---
 
@@ -285,10 +298,10 @@ backend/prisma/schema.prisma
 
 Sempre:
 
-* validar dados
-* tratar erros
-* documentar endpoints
-* organizar imports
+- validar dados
+- tratar erros
+- documentar endpoints
+- organizar imports
 
 ---
 
@@ -296,9 +309,9 @@ Sempre:
 
 Este sistema deve ser preparado para:
 
-* múltiplos workers
-* múltiplos usuários
-* alto volume de jobs
+- múltiplos workers
+- múltiplos usuários
+- alto volume de jobs
 
 ---
 
@@ -306,10 +319,10 @@ Este sistema deve ser preparado para:
 
 Nunca:
 
-* implementar lógica de IA diretamente nas rotas
-* misturar frontend e backend
-* ignorar o roadmap do projeto
-* criar código sem explicar antes
+- implementar lógica de IA diretamente nas rotas
+- misturar frontend e backend
+- ignorar o roadmap do projeto
+- criar código sem explicar antes
 
 ---
 
@@ -329,11 +342,11 @@ Sempre seguir este processo:
 
 O código deve ser:
 
-* limpo
-* modular
-* escalável
-* fácil de manter
-* preparado para crescimento
+- limpo
+- modular
+- escalável
+- fácil de manter
+- preparado para crescimento
 
 ---
 

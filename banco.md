@@ -4,9 +4,11 @@
 
 PostgreSQL
 
+ORM: Prisma (`backend/prisma/schema.prisma`)
+
 ---
 
-# Modelos principais
+# Modelos
 
 ## User
 
@@ -15,7 +17,10 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   password  String
+  name      String?
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   companies Company[]
 }
@@ -29,19 +34,67 @@ Empresa cadastrada no sistema.
 
 ```prisma
 model Company {
-  id          String   @id @default(uuid())
-  name        String
-  niche       String
-  description String
-  city        String
-  tone        String
-  createdAt   DateTime @default(now())
+  id               String   @id @default(uuid())
+  name             String
+  niche            String
+  description      String
+  city             String
+  tone             String
+  postingFrequency Int      @default(12)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   userId String
-  user   User @relation(fields: [userId], references: [id])
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  posts     Post[]
-  calendars ContentCalendar[]
+  brandProfile    BrandProfile?
+  contentStrategy ContentStrategy?
+  posts           Post[]
+  calendars       ContentCalendar[]
+  aiJobs          AIJob[]
+}
+```
+
+---
+
+## BrandProfile
+
+Perfil de marca detalhado da empresa (1:1 com Company).
+
+```prisma
+model BrandProfile {
+  id                 String   @id @default(uuid())
+  description        String
+  targetAudience     String
+  mainProducts       String
+  communicationStyle String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+```
+
+---
+
+## ContentStrategy
+
+Estratégia de conteúdo gerada pelo Gemini (1:1 com Company).
+
+```prisma
+model ContentStrategy {
+  id              String                 @id @default(uuid())
+  content         Json
+  approvalStatus  StrategyApprovalStatus @default(PENDING_APPROVAL)
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 ```
 
@@ -53,13 +106,17 @@ Agenda de posts.
 
 ```prisma
 model ContentCalendar {
-  id        String   @id @default(uuid())
-  companyId String
-  date      DateTime
-  type      ContentType
-  status    JobStatus
+  id            String      @id @default(uuid())
+  date          DateTime
+  type          ContentType
+  status        JobStatus   @default(PENDING)
+  postIdeaIndex Int?
+  createdAt     DateTime    @default(now())
 
-  company Company @relation(fields: [companyId], references: [id])
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  post Post?
 }
 ```
 
@@ -71,15 +128,22 @@ Conteúdo gerado.
 
 ```prisma
 model Post {
-  id        String   @id @default(uuid())
-  companyId String
-  type      ContentType
-  caption   String
-  mediaUrl  String?
-  status    JobStatus
-  createdAt DateTime @default(now())
+  id          String      @id @default(uuid())
+  type        ContentType
+  caption     String?
+  hashtags    String?
+  mediaUrl    String?
+  status      JobStatus   @default(PENDING)
+  scheduledAt DateTime?
+  publishedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id])
+  companyId  String
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  calendarId String?          @unique
+  calendar   ContentCalendar? @relation(fields: [calendarId], references: [id])
 }
 ```
 
@@ -87,16 +151,21 @@ model Post {
 
 ## AIJob
 
-Controle de geração.
+Controle de geração de conteúdo.
 
 ```prisma
 model AIJob {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   type      String
-  status    JobStatus
+  status    JobStatus @default(PENDING)
   payload   Json
   result    Json?
-  createdAt DateTime @default(now())
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id])
 }
 ```
 
@@ -110,14 +179,18 @@ enum ContentType {
   REEL
   STORY
 }
-```
 
-```prisma
 enum JobStatus {
   PENDING
   PROCESSING
   DONE
   FAILED
+}
+
+enum StrategyApprovalStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
 }
 ```
 
@@ -125,15 +198,15 @@ enum JobStatus {
 
 # Relações
 
+```
 User
-→ Companies
+└── Company (1:N)
+    ├── BrandProfile (1:1)
+    ├── ContentStrategy (1:1)
+    ├── ContentCalendar (1:N)
+    │   └── Post (1:1)
+    ├── Post (1:N)
+    └── AIJob (1:N)
+```
 
-Company
-→ Posts
-→ ContentCalendar
-
-Posts
-→ conteúdo gerado por IA
-
-AIJobs
-→ controle de filas
+Todos os filhos de Company têm `onDelete: Cascade` — deletar uma empresa remove todos os seus dados.

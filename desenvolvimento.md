@@ -1,112 +1,119 @@
 # Roadmap de Desenvolvimento
 
-## Fase 1 — Fundação do Projeto
+## Fase 1 — Fundação do Projeto ✅ COMPLETO
 
 Objetivo: criar base do sistema.
 
 ### Backend
 
-* criar projeto FastAPI
-* configurar PostgreSQL
-* configurar Prisma
-* criar autenticação JWT
-* criar CRUD de usuários
+- ~~criar projeto FastAPI~~ → **Fastify + TypeScript**
+- configurar PostgreSQL ✓
+- configurar Prisma ✓
+- criar autenticação JWT ✓
+- criar CRUD de usuários ✓
 
 ### Frontend
 
-* iniciar projeto React com Vite
-* configurar TypeScript
-* configurar Tailwind
-* criar layout base
+- iniciar projeto React com Vite ✓
+- configurar TypeScript ✓
+- configurar Tailwind ✓
+- criar layout base ✓
 
 ---
 
-# Fase 2 — Sistema de Empresas
+# Fase 2 — Sistema de Empresas ✅ COMPLETO
 
 Objetivo: permitir cadastro de empresas.
 
 ### Backend
 
-* CRUD de empresas
-* endpoint de perfil da empresa
+- CRUD de empresas ✓
+- CRUD de perfil de marca (BrandProfile) ✓
 
 ### Frontend
 
-* tela de cadastro de empresa
-* edição de empresa
-* dashboard inicial
+- tela de cadastro de empresa ✓
+- edição de empresa ✓
+- dashboard inicial ✓
 
 ---
 
-# Fase 3 — Estratégia de Conteúdo com IA
+# Fase 3 — Estratégia de Conteúdo com IA ✅ COMPLETO
 
 Objetivo: gerar estratégia automática.
 
 ### Backend
 
-* integração com Claude
-* geração de estratégia de conteúdo
-* salvar estratégia no banco
+- ~~integração com Claude~~ → **integração com Gemini** ✓
+- geração de estratégia de conteúdo via `claude.agent.ts` (Gemini) ✓
+- salvar estratégia no banco (modelo ContentStrategy) ✓
+- fluxo de aprovação/rejeição de estratégia ✓
 
 ### Frontend
 
-* visualização da estratégia
-* aprovação da estratégia
+- visualização da estratégia ✓
+- aprovação/rejeição da estratégia ✓
 
 ---
 
-# Fase 4 — Calendário de Conteúdo
+# Fase 4 — Calendário de Conteúdo ✅ COMPLETO
 
 Objetivo: gerar agenda automática.
 
 ### Backend
 
-* geração de calendário semanal
-* criação de jobs de geração
+- geração de calendário com base na estratégia aprovada ✓
+- entradas de ContentCalendar com postIdeaIndex ✓
 
 ### Frontend
 
-* tela de calendário
-* visualização dos posts
+- tela de calendário (FullCalendar) ✓
+- visualização dos posts agendados ✓
 
 ---
 
-# Fase 5 — Geração de Conteúdo
+# Fase 5 — Geração de Conteúdo ✅ COMPLETO
 
 Objetivo: gerar posts reais.
 
 ### Backend
 
-Workers devem gerar:
+Workers geram:
 
-Imagem → Gemini
-Vídeo → Veo
-Texto → Claude
+- Imagem → Gemini Imagen (`image.adapter.ts`) ✓
+- Vídeo → Veo 3 com fallback para imagem (`video.adapter.ts`) ✓
+- Legenda + Hashtags → Gemini (`content.agent.ts`) ✓
 
-Salvar conteúdo no banco.
+Mídia salva localmente em `/uploads/` e servida via `/media/:filename` ✓
+
+### Frontend
+
+- visualização de mídia gerada (MediaViewer) ✓
+- download de conteúdo ✓
 
 ---
 
-# Fase 6 — Sistema de Filas
+# Fase 6 — Sistema de Filas ✅ COMPLETO
 
 Objetivo: processamento escalável.
 
-Implementar:
-
-* Redis
-* workers
-* controle de jobs
+- BullMQ queue (`content.queue.ts`) ✓
+- Content worker com concorrência 3 (`content.worker.ts`) ✓
+- Redis como broker ✓
+- Retry automático exponencial (3 tentativas) ✓
+- Atomic claim para evitar processamento duplicado ✓
+- Rollback transacional em caso de falha na fila ✓
 
 ---
 
-# Fase 7 — Dashboard
+# Fase 7 — Dashboard 🔄 EM DESENVOLVIMENTO
 
 Mostrar:
 
-* posts gerados
-* calendário
-* downloads
-* status das gerações
+- posts gerados com status
+- calendário interativo
+- visualização e download de mídia
+- status das gerações em tempo real
 
 ---
 
@@ -114,9 +121,9 @@ Mostrar:
 
 Sistema deve:
 
-* gerar conteúdo semanal automaticamente
-* atualizar calendário
-* enviar notificações
+- gerar conteúdo semanal automaticamente
+- atualizar calendário
+- enviar notificações de conclusão
 
 ---
 
@@ -126,10 +133,10 @@ Primeira versão comercial:
 
 Funcionalidades:
 
-* cadastro de empresa
-* geração automática de posts
-* download de conteúdo
-* calendário
+- cadastro de empresa
+- geração automática de posts
+- download de conteúdo
+- calendário
 
 ---
 
@@ -137,7 +144,7 @@ Funcionalidades:
 
 Melhorias:
 
-* múltiplos workers
-* analytics
-* integrações com redes sociais
-* agendamento automático
+- múltiplos workers
+- analytics
+- integração com Instagram Graph API (agendamento automático)
+- suporte a TikTok, LinkedIn
