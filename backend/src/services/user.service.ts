@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { hashPassword } from "../utils/password";
+import { hashPassword, verifyPassword } from "../utils/password";
 
 export interface CreateUserInput {
   email: string;
@@ -43,4 +43,20 @@ export async function updateUser(
 
 export async function deactivateUser(prisma: PrismaClient, userId: string) {
   return prisma.user.update({ where: { id: userId }, data: { isActive: false } });
+}
+
+export async function changePassword(
+  prisma: PrismaClient,
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw Object.assign(new Error("Usuário não encontrado."), { statusCode: 404 });
+
+  const valid = await verifyPassword(currentPassword, user.password);
+  if (!valid) throw Object.assign(new Error("Senha atual incorreta."), { statusCode: 400 });
+
+  const hashed = await hashPassword(newPassword);
+  await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
 }

@@ -106,14 +106,16 @@ Objetivo: processamento escalável.
 
 ---
 
-# Fase 7 — Dashboard 🔄 EM DESENVOLVIMENTO
+# Fase 7 — Dashboard ✅ COMPLETO
 
 Mostrar:
 
-- posts gerados com status
-- calendário interativo
-- visualização e download de mídia
-- status das gerações em tempo real
+- cards de stats no dashboard (posts gerados, calendário, downloads, jobs ativos) ✓
+- polling automático de stats (5 s ativo / 20 s idle) ✓
+- ContentPage — lista de posts com filtros, paginação e visualização de mídia ✓
+- CalendarPage — FullCalendar, geração individual e em batch ✓
+- download de mídia gerada ✓
+- SettingsPage — edição de perfil (nome/e-mail) e troca de senha ✓
 
 ---
 

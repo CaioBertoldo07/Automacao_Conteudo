@@ -20,4 +20,10 @@ export async function userRoutes(
     { preHandler: [authMiddleware] },
     controller.updateMeHandler.bind(controller)
   );
+
+  fastify.patch(
+    "/users/me/password",
+    { preHandler: [authMiddleware] },
+    controller.changePasswordHandler.bind(controller)
+  );
 }

@@ -59,6 +59,15 @@ export const userService = {
     const response = await api.get<User>("/users/me");
     return response.data;
   },
+
+  updateMe: async (data: { name?: string; email?: string }): Promise<User> => {
+    const response = await api.patch<User>("/users/me", data);
+    return response.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await api.patch("/users/me/password", { currentPassword, newPassword });
+  },
 };
 
 export const companyService = {
