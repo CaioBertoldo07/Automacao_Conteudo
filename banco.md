@@ -52,6 +52,7 @@ model Company {
   posts           Post[]
   calendars       ContentCalendar[]
   aiJobs          AIJob[]
+  media           CompanyMedia[]
 }
 ```
 
@@ -68,6 +69,9 @@ model BrandProfile {
   targetAudience     String
   mainProducts       String
   communicationStyle String
+  logoUrl            String?
+  brandColors        String[]
+  visualStyle        String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -192,6 +196,41 @@ enum StrategyApprovalStatus {
   APPROVED
   REJECTED
 }
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  LOGO
+}
+```
+
+---
+
+## CompanyMedia
+
+Mídias carregadas pela empresa. Analisadas automaticamente via Gemini após upload.
+
+```prisma
+model CompanyMedia {
+  id          String    @id @default(uuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type        MediaType           // IMAGE | VIDEO | LOGO (promovido se category = "logo")
+  url         String              // caminho público: /media/company-media/<companyId>/<filename>
+  filename    String
+  mimeType    String
+  category    String?             // produto | bastidores | loja | equipe | logo | outros
+  tags        String[]
+  description String?
+  metadata    Json?               // detectedElements, dominantColors, suggestedUse
+  aiAnalyzed  Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([companyId, category])
+}
 ```
 
 ---
@@ -206,7 +245,8 @@ User
     ├── ContentCalendar (1:N)
     │   └── Post (1:1)
     ├── Post (1:N)
-    └── AIJob (1:N)
+    ├── AIJob (1:N)
+    └── CompanyMedia (1:N)
 ```
 
 Todos os filhos de Company têm `onDelete: Cascade` — deletar uma empresa remove todos os seus dados.

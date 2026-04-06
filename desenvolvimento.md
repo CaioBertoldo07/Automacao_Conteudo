@@ -119,7 +119,38 @@ Mostrar:
 
 ---
 
-# Fase 8 — Automação Completa
+# Fase 8 — Biblioteca de Mídias ✅ COMPLETO
+
+Objetivo: permitir que empresas façam upload e gestão de mídias próprias para uso na geração de conteúdo.
+
+### Backend
+
+- Upload de imagens e vídeos por empresa (`POST /companies/:companyId/media`) ✓
+- Análise automática de mídias via Gemini ao fazer upload ✓
+  - Extrai: `category`, `tags`, `description`, `detectedElements`, `dominantColors`, `suggestedUse`
+  - Promove tipo para `LOGO` se categoria detectada = `logo`
+- Fila dedicada `media-analysis` (BullMQ) com worker separado ✓
+- Rate limiting do worker: 1 req/15 s, backoff exponencial 60 s, 5 tentativas ✓
+- Listagem com filtros por `category` e `type` ✓
+- Toggle de ativação de mídia (`isActive`) ✓
+- Exclusão de mídia (arquivo + registro) ✓
+- Endpoint de re-enfileiramento de mídias com análise pendente (`POST /companies/:companyId/media/requeue`) ✓
+- Sérvia de arquivos via `/media/company-media/*` ✓
+
+### Frontend
+
+- Página Biblioteca de Mídia (`/media`) ✓
+- Upload com drag-and-drop (componente `MediaUploader`) ✓
+- Cards de mídia com badge de status (Analisando / categoria / inativa) ✓
+- Polling automático de 3 s enquanto houver mídias pendentes ✓
+- Filtros por tipo e status ✓
+- Acões por card: ativar/desativar, deletar ✓
+- Botão “Re-analisar falhas” (visível somente quando `hasPending = true`) ✓
+- Toast de feedback ao re-enfileirar (sem `alert()`) ✓
+
+---
+
+# Fase 9 — Automação Completa
 
 Sistema deve:
 
@@ -129,7 +160,7 @@ Sistema deve:
 
 ---
 
-# Fase 9 — MVP
+# Fase 10 — MVP
 
 Primeira versão comercial:
 
@@ -142,7 +173,7 @@ Funcionalidades:
 
 ---
 
-# Fase 10 — Escala
+# Fase 11 — Escala
 
 Melhorias:
 

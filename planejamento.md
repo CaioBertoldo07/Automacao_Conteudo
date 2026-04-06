@@ -6,14 +6,14 @@ Sistema SaaS que automatiza completamente a criação e gestão de conteúdo par
 
 A plataforma funciona como um **agente de marketing autônomo**, capaz de:
 
-* Planejar conteúdo automaticamente
-* Gerar imagens
-* Gerar vídeos (reels)
-* Criar legendas e hashtags
-* Gerar stories
-* Montar calendário de posts
-* Agendar publicações
-* Manter consistência de marca
+- Planejar conteúdo automaticamente
+- Gerar imagens
+- Gerar vídeos (reels)
+- Criar legendas e hashtags
+- Gerar stories
+- Montar calendário de posts
+- Agendar publicações
+- Manter consistência de marca
 
 O objetivo é permitir que empresas configurem o sistema **uma única vez**, e depois tenham seu Instagram funcionando praticamente em piloto automático.
 
@@ -27,27 +27,16 @@ Cada IA terá uma função específica dentro da arquitetura.
 
 ## Papel das IAs
 
-### Claude
+### Gemini
 
 Responsável por:
 
-* Planejamento de conteúdo
-* Criação de prompts
-* Organização do calendário editorial
-* Criação de copys
-* Estratégia de marketing
-* Estruturação de posts
+- Planejamento e estratégia de conteúdo (`claude.agent.ts`)
+- Criação de legendas e hashtags (`content.agent.ts`)
+- Geração de imagens via Gemini Imagen (`image.adapter.ts`)
+- Análise e categorização de mídias carregadas (`media.agent.ts`)
 
-Claude atua como **o cérebro do sistema**.
-
----
-
-### Gemini (Nano Banana)
-
-Responsável por:
-
-* Geração de imagens para posts
-* Geração de imagens para stories
+Gemini atua como **o cérebro do sistema**.
 
 ---
 
@@ -55,8 +44,8 @@ Responsável por:
 
 Responsável por:
 
-* Geração de vídeos
-* Criação de reels
+- Geração de vídeos
+- Criação de reels
 
 ---
 
@@ -64,11 +53,11 @@ Responsável por:
 
 Responsável por:
 
-* Orquestrar todas as IAs
-* Gerenciar filas
-* Persistir dados
-* Controlar agendamentos
-* Gerenciar contas de usuários
+- Orquestrar todas as IAs
+- Gerenciar filas (BullMQ + Redis)
+- Persistir dados (PostgreSQL + Prisma)
+- Controlar agendamentos
+- Gerenciar contas de usuários
 
 ---
 
@@ -76,13 +65,13 @@ Responsável por:
 
 Pequenos negócios que precisam de presença constante no Instagram:
 
-* Docerias
-* Restaurantes
-* Barbearias
-* Academias
-* Clínicas
-* Lojas locais
-* Pequenos empreendedores
+- Docerias
+- Restaurantes
+- Barbearias
+- Academias
+- Clínicas
+- Lojas locais
+- Pequenos empreendedores
 
 ---
 
@@ -92,12 +81,12 @@ Pequenos negócios que precisam de presença constante no Instagram:
 
 O sistema:
 
-* cria conteúdo
-* cria imagens
-* cria vídeos
-* cria legenda
-* cria stories
-* agenda tudo automaticamente
+- cria conteúdo
+- cria imagens
+- cria vídeos
+- cria legenda
+- cria stories
+- agenda tudo automaticamente
 
 Sem necessidade de um social media.
 
@@ -129,10 +118,11 @@ Scheduler de posts
 
 ## Backend
 
-Python
-FastAPI
+TypeScript
+Fastify
 PostgreSQL
-Redis
+Prisma ORM
+Redis + BullMQ
 
 Workers para processamento assíncrono.
 
@@ -142,9 +132,9 @@ Workers para processamento assíncrono.
 
 React
 TypeScript
-Next.js
+Vite
 Tailwind CSS
-Shadcn UI
+Radix UI
 
 Bibliotecas adicionais:
 
@@ -166,13 +156,10 @@ Sistema de filas com Redis
 
 Redis será usado para gerenciar tarefas pesadas.
 
-Filas principais:
+Filas implementadas:
 
-content-planning
-image-generation
-video-generation
-post-processing
-scheduler
+content-generation — geração de posts (legenda, imagem, vídeo)
+media-analysis — análise automática de mídias carregadas
 
 ---
 
@@ -184,8 +171,8 @@ generate_content_plan
 
 Claude cria:
 
-* ideias de posts
-* calendário mensal
+- ideias de posts
+- calendário mensal
 
 ---
 
@@ -195,8 +182,8 @@ generate_post_image
 
 Responsável por:
 
-* chamar Gemini
-* gerar imagens
+- chamar Gemini
+- gerar imagens
 
 ---
 
@@ -206,8 +193,8 @@ generate_reel_video
 
 Responsável por:
 
-* chamar Veo
-* gerar reels
+- chamar Veo
+- gerar reels
 
 ---
 
@@ -217,10 +204,10 @@ assemble_post
 
 Responsável por:
 
-* unir mídia
-* legenda
-* hashtags
-* metadados
+- unir mídia
+- legenda
+- hashtags
+- metadados
 
 ---
 
@@ -230,8 +217,8 @@ schedule_post
 
 Responsável por:
 
-* preparar postagem
-* enviar para Instagram
+- preparar postagem
+- enviar para Instagram
 
 ---
 
@@ -239,65 +226,49 @@ Responsável por:
 
 ## Tabela Users
 
-id
-email
-password_hash
-created_at
+id, email, password, name, isActive, createdAt, updatedAt
 
 ---
 
 ## Tabela Companies
 
-id
-user_id
-name
-niche
-city
-tone
-posting_frequency
-created_at
+id, userId, name, niche, description, city, tone, postingFrequency, createdAt, updatedAt
 
 ---
 
 ## Tabela BrandProfile
 
-company_id
-description
-target_audience
-main_products
-communication_style
+id, companyId, description, targetAudience, mainProducts, communicationStyle, logoUrl, brandColors, visualStyle, createdAt, updatedAt
 
 ---
 
-## Tabela ContentIdeas
+## Tabela ContentStrategy
 
-id
-company_id
-idea
-content_type
-created_at
+id, companyId, content (JSON), approvalStatus, approvedAt, rejectedAt, rejectionReason, createdAt, updatedAt
+
+---
+
+## Tabela ContentCalendar
+
+id, companyId, date, type, status, postIdeaIndex, createdAt
 
 ---
 
 ## Tabela Posts
 
-id
-company_id
-content_idea_id
-type (post, reel, story)
-caption
-hashtags
-media_url
-status
-scheduled_at
+id, companyId, calendarId, type, caption, hashtags, mediaUrl, status, scheduledAt, publishedAt, createdAt, updatedAt
 
 ---
 
-## Tabela Jobs
+## Tabela AIJob
 
-id
-type
-status
+id, companyId, type, status, payload (JSON), result (JSON), error, createdAt, updatedAt
+
+---
+
+## Tabela CompanyMedia
+
+id, companyId, type (IMAGE/VIDEO/LOGO), url, filename, mimeType, category, tags, description, metadata (JSON), aiAnalyzed, isActive, createdAt, updatedAt
 payload
 created_at
 
@@ -472,11 +443,11 @@ Objetivo: preparar fundação do sistema.
 
 Implementar:
 
-* estrutura do backend
-* banco de dados
-* autenticação
-* cadastro de empresa
-* cadastro de perfil de marca
+- estrutura do backend
+- banco de dados
+- autenticação
+- cadastro de empresa
+- cadastro de perfil de marca
 
 ---
 

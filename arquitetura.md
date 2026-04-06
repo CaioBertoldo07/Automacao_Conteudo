@@ -101,10 +101,12 @@ Rotas `/api/*`:
 - `/api/strategy` — geração e aprovação de estratégia
 - `/api/calendar` — geração e listagem de calendário
 - `/api/content` — enfileiramento e status de geração
+- `/api/companies/:companyId/media` — upload, listagem, toggle e exclusão de mídias da empresa
+- `/api/companies/:companyId/media/requeue` — re-enfileirar mídias com análise pendente
 
 Rota estática:
 
-- `/media/:filename` — serve arquivos gerados localmente
+- `/media/*` — serve arquivos gerados e mídias carregadas localmente (protegido contra path traversal)
 
 ---
 
@@ -125,6 +127,23 @@ Configuração: concorrência 3, retry automático exponencial (3 tentativas).
 
 ---
 
+## Media Worker (BullMQ)
+
+Arquivo: `src/worker.ts` / `src/workers/media.worker.ts`
+
+Responsável por:
+
+- consumir jobs da fila `media-analysis`
+- ler arquivo do disco, converter para base64
+- chamar Gemini via `media.agent.ts` para análise da imagem
+- extrair `category`, `tags`, `description`, `detectedElements`, `dominantColors`, `suggestedUse`
+- atualizar `CompanyMedia` no banco com `aiAnalyzed: true`
+- se categoria = `logo`, promover tipo para `LOGO`
+
+Configuração: concorrência 1, limiter 1 req/15 s (≈ 4 req/min — respeita free tier Gemini), backoff exponencial 60 s com 5 tentativas.
+
+---
+
 ## Agents de IA
 
 ```
@@ -133,6 +152,7 @@ agents/
     content.agent.ts   ← geração de legenda e hashtags via Gemini
     image.adapter.ts   ← geração de imagem via Gemini Imagen
     video.adapter.ts   ← geração de vídeo via Veo 3 (REST API)
+    media.agent.ts     ← análise de mídias carregadas via Gemini (categorização, tags, descrição)
 ```
 
 ---
@@ -142,11 +162,18 @@ agents/
 ```
 queues/
     content.queue.ts   ← define fila "content-generation"
+    media.queue.ts     ← define fila "media-analysis"
 ```
 
-Configuração da fila:
+Configuração da fila `content-generation`:
 
 - 3 tentativas com backoff exponencial (5 s inicial)
+- Limpa jobs concluídos (manter últimos 100)
+- Limpa jobs com falha (manter últimos 200)
+
+Configuração da fila `media-analysis`:
+
+- 5 tentativas com backoff exponencial (60 s inicial → 60 s, 120 s, 240 s, 480 s, 960 s)
 - Limpa jobs concluídos (manter últimos 100)
 - Limpa jobs com falha (manter últimos 200)
 
@@ -179,7 +206,14 @@ Configuração da fila:
 
 **Fase atual:** filesystem local em `/uploads/`
 
-Fluxo: `base64 → uploadMedia() → /uploads/<uuid>.<ext> → /media/<filename>`
+Dois tipos de arquivos:
+
+- **Conteúdo gerado**: `uploads/<uuid>.<ext>` — gerado pelos workers de conteúdo
+- **Mídias carregadas**: `uploads/company-media/<companyId>/<uuid>.<ext>` — carregadas pelo usuário via painel
+
+Fluxo conteúdo gerado: `base64 → uploadMedia() → /uploads/<uuid>.<ext> → /media/<filename>`
+
+Fluxo mídia carregada: `multipart upload → /uploads/company-media/<companyId>/<uuid>.<ext> → /media/company-media/...`
 
 **Futuro:** trocar `uploadMedia()` por implementação S3/R2/GCS sem alterar nenhum outro arquivo.
 
