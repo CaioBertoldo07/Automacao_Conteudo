@@ -12,6 +12,7 @@ export async function mediaRoutes(
 
   fastify.post("/companies/:companyId/media", auth, c.uploadMedia.bind(c));
   fastify.get("/companies/:companyId/media", auth, c.listMedia.bind(c));
+  fastify.post("/companies/:companyId/media/requeue", auth, c.requeueMedia.bind(c));
   fastify.get("/companies/:companyId/media/:mediaId", auth, c.getMedia.bind(c));
   fastify.patch("/companies/:companyId/media/:mediaId", auth, c.toggleMedia.bind(c));
   fastify.delete("/companies/:companyId/media/:mediaId", auth, c.deleteMedia.bind(c));

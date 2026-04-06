@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Images,
   Plus,
@@ -8,6 +8,7 @@ import {
   Loader2,
   Tag,
   ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -18,6 +19,7 @@ import {
   useUploadMedia,
   useDeleteMedia,
   useToggleMedia,
+  useRequeueMedia,
   type CompanyMedia,
   type MediaType,
 } from "@/hooks/useMedia";
@@ -159,6 +161,8 @@ export function MediaLibraryPage() {
   const uploadMedia = useUploadMedia(companyId);
   const deleteMedia = useDeleteMedia(companyId);
   const toggleMedia = useToggleMedia(companyId);
+  const requeueMedia = useRequeueMedia(companyId);
+  const hasPending = mediaList?.some((m) => !m.aiAnalyzed) ?? false;
 
   const [uploaderOpen, setUploaderOpen] = useState(false);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL");
@@ -167,6 +171,13 @@ export function MediaLibraryPage() {
   // Per-card pending state (mediaId → action)
   const [pendingToggle, setPendingToggle] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   async function handleUpload(file: File) {
     await uploadMedia.mutateAsync(file);
@@ -192,10 +203,22 @@ export function MediaLibraryPage() {
     }
   }
 
+  async function handleRequeue() {
+    const result = await requeueMedia.mutateAsync();
+    setToast(`${result.requeued} mídia${result.requeued !== 1 ? "s" : ""} re-enfileirada${result.requeued !== 1 ? "s" : ""} para análise.`);
+  }
+
   const filtered = filterMedia(mediaList ?? [], typeFilter, statusFilter);
 
   return (
     <div className="flex-1 overflow-auto p-8">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-3 shadow-lg text-sm text-foreground animate-in fade-in slide-in-from-bottom-2">
+          <RefreshCw className="h-4 w-4 text-primary shrink-0" />
+          {toast}
+        </div>
+      )}
       <div className="mx-auto max-w-5xl space-y-6">
 
         {/* Header */}
@@ -209,16 +232,33 @@ export function MediaLibraryPage() {
               Gerencie as mídias da sua empresa
             </p>
           </div>
-          <Button
-            onClick={() => setUploaderOpen((o) => !o)}
-            className="shrink-0 flex items-center gap-2"
-          >
-            {uploaderOpen ? (
-              <><ChevronUp className="h-4 w-4" /> Fechar</>
-            ) : (
-              <><Plus className="h-4 w-4" /> Adicionar mídia</>
+          <div className="flex items-center gap-2 shrink-0">
+            {hasPending && (
+              <Button
+                variant="outline"
+                onClick={handleRequeue}
+                disabled={requeueMedia.isPending}
+                className="flex items-center gap-2"
+              >
+                {requeueMedia.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Re-analisar falhas
+              </Button>
             )}
-          </Button>
+            <Button
+              onClick={() => setUploaderOpen((o) => !o)}
+              className="flex items-center gap-2"
+            >
+              {uploaderOpen ? (
+                <><ChevronUp className="h-4 w-4" /> Fechar</>
+              ) : (
+                <><Plus className="h-4 w-4" /> Adicionar mídia</>
+              )}
+            </Button>
+          </div>
         </div>
 
         {/* Uploader (collapsible) */}

@@ -200,6 +200,29 @@ export async function toggleCompanyMediaActive(
   return updated;
 }
 
+// ─── Requeue failed ──────────────────────────────────────────────────────────
+
+export async function requeueFailedMedia(
+  prisma: PrismaClient,
+  companyId: string,
+  userId: string
+): Promise<{ requeued: number }> {
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) throw makeError("Empresa não encontrada.", 404);
+  if (company.userId !== userId) throw makeError("Acesso negado.", 403);
+
+  const pending = await prisma.companyMedia.findMany({
+    where: { companyId, aiAnalyzed: false },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    pending.map((m) => mediaAnalysisQueue.add("analyze", { mediaId: m.id }))
+  );
+
+  return { requeued: pending.length };
+}
+
 // ─── Select for post ─────────────────────────────────────────────────────────
 
 export async function selectMediaForPost(

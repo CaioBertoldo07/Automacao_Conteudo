@@ -9,6 +9,7 @@ import {
   deleteCompanyMedia,
   getCompanyMediaById,
   toggleCompanyMediaActive,
+  requeueFailedMedia,
 } from "../services/media.service";
 
 const toggleSchema = z.object({ isActive: z.boolean() });
@@ -121,6 +122,17 @@ export function makeMediaController(prisma: PrismaClient) {
       try {
         await deleteCompanyMedia(prisma, mediaId, request.userId);
         return reply.code(204).send();
+      } catch (err: unknown) {
+        const e = err as Error & { statusCode?: number };
+        return reply.code(e.statusCode ?? 500).send({ error: e.message });
+      }
+    },
+
+    async requeueMedia(request: FastifyRequest, reply: FastifyReply) {
+      const { companyId } = request.params as { companyId: string };
+      try {
+        const result = await requeueFailedMedia(prisma, companyId, request.userId);
+        return reply.send(result);
       } catch (err: unknown) {
         const e = err as Error & { statusCode?: number };
         return reply.code(e.statusCode ?? 500).send({ error: e.message });

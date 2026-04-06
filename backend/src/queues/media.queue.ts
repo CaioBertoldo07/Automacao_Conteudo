@@ -12,8 +12,8 @@ export const mediaAnalysisQueue = new Queue<MediaAnalysisJobPayload>(
   {
     connection: redisConnection,
     defaultJobOptions: {
-      attempts: 3,
-      backoff: { type: "exponential", delay: 5_000 },
+      attempts: 5,
+      backoff: { type: "exponential", delay: 60_000 },
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 200 },
     },

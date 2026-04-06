@@ -43,6 +43,8 @@ export function useCompanyMedia(
     },
     enabled: !!companyId,
     staleTime: 1000 * 30,
+    refetchInterval: (query) =>
+      query.state.data?.some((m) => !m.aiAnalyzed) ? 3000 : false,
   });
 }
 
@@ -105,6 +107,22 @@ export function useDeleteMedia(companyId: string) {
   return useMutation({
     mutationFn: async (mediaId: string) => {
       await api.delete(`/companies/${companyId}/media/${mediaId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["media", companyId] });
+    },
+  });
+}
+
+export function useRequeueMedia(companyId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const response = await api.post<{ requeued: number }>(
+        `/companies/${companyId}/media/requeue`
+      );
+      return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media", companyId] });
