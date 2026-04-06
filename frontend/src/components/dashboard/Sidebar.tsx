@@ -14,6 +14,7 @@ import {
 import { cn } from "@/utils/cn";
 import { useAuth } from "@/hooks/useAuth";
 import { useThemeContext } from "@/App";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -62,6 +63,10 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t border-border px-4 py-4">
+        <div className="mb-2">
+          <NotificationBell />
+        </div>
+
         <div className="mb-3 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary text-sm font-semibold">
             {user?.name?.[0]?.toUpperCase() ?? user?.email?.[0]?.toUpperCase() ?? "U"}

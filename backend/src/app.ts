@@ -13,6 +13,8 @@ import { strategyRoutes } from "./routes/strategy.routes";
 import { calendarRoutes } from "./routes/calendar.routes";
 import { contentRoutes } from "./routes/content.routes";
 import { mediaRoutes } from "./routes/media.routes";
+import { notificationRoutes } from "./routes/notification.routes";
+import { automationRoutes } from "./routes/automation.routes";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -77,6 +79,8 @@ export async function buildApp() {
   fastify.register(calendarRoutes, { prefix: "/api", prisma });
   fastify.register(contentRoutes, { prefix: "/api", prisma });
   fastify.register(mediaRoutes, { prefix: "/api", prisma });
+  fastify.register(notificationRoutes, { prefix: "/api", prisma });
+  fastify.register(automationRoutes, { prefix: "/api", prisma });
 
   fastify.addHook("onClose", async () => {
     await prisma.$disconnect();

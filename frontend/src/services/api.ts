@@ -16,6 +16,9 @@ import type {
   PostsPage,
   PostsFilter,
   PostMediaInfo,
+  Notification,
+  AutomationConfig,
+  UpdateAutomationConfigRequest,
 } from "@/types";
 
 const api = axios.create({
@@ -202,6 +205,110 @@ export const postService = {
   /** GET /posts/:id/download → validates ownership, returns mediaUrl. */
   getDownloadInfo: async (postId: string): Promise<PostMediaInfo> => {
     const response = await api.get<PostMediaInfo>(`/posts/${postId}/download`);
+    return response.data;
+  },
+};
+
+// Phase 8 — media library
+export const mediaService = {
+  list: async (
+    companyId: string,
+    filters?: { category?: string; type?: import("@/types").MediaType }
+  ): Promise<import("@/types").CompanyMedia[]> => {
+    const params: Record<string, string> = {};
+    if (filters?.category) params.category = filters.category;
+    if (filters?.type) params.type = filters.type;
+    const response = await api.get<import("@/types").CompanyMedia[]>(
+      `/companies/${companyId}/media`,
+      { params }
+    );
+    return response.data;
+  },
+
+  get: async (
+    companyId: string,
+    mediaId: string
+  ): Promise<import("@/types").CompanyMedia> => {
+    const response = await api.get<import("@/types").CompanyMedia>(
+      `/companies/${companyId}/media/${mediaId}`
+    );
+    return response.data;
+  },
+
+  upload: async (
+    companyId: string,
+    file: File
+  ): Promise<import("@/types").CompanyMedia> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const response = await api.post<import("@/types").CompanyMedia>(
+      `/companies/${companyId}/media`,
+      formData,
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+    return response.data;
+  },
+
+  toggle: async (
+    companyId: string,
+    mediaId: string,
+    isActive: boolean
+  ): Promise<import("@/types").CompanyMedia> => {
+    const response = await api.patch<import("@/types").CompanyMedia>(
+      `/companies/${companyId}/media/${mediaId}`,
+      { isActive }
+    );
+    return response.data;
+  },
+
+  remove: async (companyId: string, mediaId: string): Promise<void> => {
+    await api.delete(`/companies/${companyId}/media/${mediaId}`);
+  },
+
+  requeue: async (companyId: string): Promise<{ requeued: number }> => {
+    const response = await api.post<{ requeued: number }>(
+      `/companies/${companyId}/media/requeue`
+    );
+    return response.data;
+  },
+};
+
+// Phase 9 — notifications
+export const notificationService = {
+  list: async (): Promise<Notification[]> => {
+    const response = await api.get<Notification[]>("/notifications");
+    return response.data;
+  },
+
+  markRead: async (id: string): Promise<Notification> => {
+    const response = await api.patch<Notification>(`/notifications/${id}/read`);
+    return response.data;
+  },
+
+  markAllRead: async (): Promise<void> => {
+    await api.patch("/notifications/read-all");
+  },
+
+  unreadCount: async (): Promise<{ count: number }> => {
+    const response = await api.get<{ count: number }>("/notifications/unread-count");
+    return response.data;
+  },
+};
+
+// Phase 9 — automation
+export const automationService = {
+  getConfig: async (): Promise<AutomationConfig> => {
+    const response = await api.get<AutomationConfig>("/automation/config");
+    return response.data;
+  },
+
+  updateConfig: async (data: UpdateAutomationConfigRequest): Promise<AutomationConfig> => {
+    const response = await api.patch<AutomationConfig>("/automation/config", data);
+    return response.data;
+  },
+
+  trigger: async (): Promise<{ ok: boolean; message: string }> => {
+    const response = await api.post<{ ok: boolean; message: string }>("/automation/trigger");
     return response.data;
   },
 };

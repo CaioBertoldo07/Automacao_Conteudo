@@ -112,6 +112,7 @@ export async function enqueuePostContent(
       aiJobId: aiJob.id,
       calendarEntryId,
       userId,
+      companyId: entry.companyId,
       ...(useCompanyMedia ? { useCompanyMedia: true } : {}),
     });
   } catch (queueErr) {

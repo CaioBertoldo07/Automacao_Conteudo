@@ -1,24 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import api from "@/services/api";
+import { mediaService } from "@/services/api";
+import type { CompanyMedia, MediaType } from "@/types";
 
-export type MediaType = "IMAGE" | "VIDEO" | "LOGO";
-
-export interface CompanyMedia {
-  id: string;
-  companyId: string;
-  type: MediaType;
-  url: string;
-  filename: string;
-  mimeType: string;
-  category: string | null;
-  tags: string[];
-  description: string | null;
-  metadata: Record<string, unknown> | null;
-  aiAnalyzed: boolean;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
+export type { CompanyMedia, MediaType };
 
 export const MEDIA_KEYS = {
   list: (companyId: string, filters?: object) =>
@@ -31,16 +15,7 @@ export function useCompanyMedia(
 ) {
   return useQuery({
     queryKey: MEDIA_KEYS.list(companyId, filters),
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (filters?.category) params.category = filters.category;
-      if (filters?.type) params.type = filters.type;
-      const response = await api.get<CompanyMedia[]>(
-        `/companies/${companyId}/media`,
-        { params }
-      );
-      return response.data;
-    },
+    queryFn: () => mediaService.list(companyId, filters),
     enabled: !!companyId,
     staleTime: 1000 * 30,
     refetchInterval: (query) =>
@@ -52,16 +27,7 @@ export function useUploadMedia(companyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const response = await api.post<CompanyMedia>(
-        `/companies/${companyId}/media`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      return response.data;
-    },
+    mutationFn: (file: File) => mediaService.upload(companyId, file),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media", companyId] });
     },
@@ -71,12 +37,7 @@ export function useUploadMedia(companyId: string) {
 export function useGetMedia(companyId: string, mediaId: string | null) {
   return useQuery({
     queryKey: ["media", companyId, mediaId],
-    queryFn: async () => {
-      const response = await api.get<CompanyMedia>(
-        `/companies/${companyId}/media/${mediaId}`
-      );
-      return response.data;
-    },
+    queryFn: () => mediaService.get(companyId, mediaId!),
     enabled: !!companyId && !!mediaId,
     // Poll every 3 s while AI analysis is still pending; stop when done.
     refetchInterval: (query) =>
@@ -88,13 +49,8 @@ export function useToggleMedia(companyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ mediaId, isActive }: { mediaId: string; isActive: boolean }) => {
-      const response = await api.patch<CompanyMedia>(
-        `/companies/${companyId}/media/${mediaId}`,
-        { isActive }
-      );
-      return response.data;
-    },
+    mutationFn: ({ mediaId, isActive }: { mediaId: string; isActive: boolean }) =>
+      mediaService.toggle(companyId, mediaId, isActive),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media", companyId] });
     },
@@ -105,9 +61,7 @@ export function useDeleteMedia(companyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (mediaId: string) => {
-      await api.delete(`/companies/${companyId}/media/${mediaId}`);
-    },
+    mutationFn: (mediaId: string) => mediaService.remove(companyId, mediaId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media", companyId] });
     },
@@ -118,12 +72,7 @@ export function useRequeueMedia(companyId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
-      const response = await api.post<{ requeued: number }>(
-        `/companies/${companyId}/media/requeue`
-      );
-      return response.data;
-    },
+    mutationFn: () => mediaService.requeue(companyId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["media", companyId] });
     },

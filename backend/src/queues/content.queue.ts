@@ -7,6 +7,7 @@ export interface ContentJobPayload {
   aiJobId: string;
   calendarEntryId: string;
   userId: string;
+  companyId?: string;
   useCompanyMedia?: boolean;
 }
 

@@ -1,8 +1,9 @@
 import { Worker } from "bullmq";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, NotificationType } from "@prisma/client";
 import { redisConnection } from "../config/redis";
 import { CONTENT_QUEUE_NAME, type ContentJobPayload } from "../queues/content.queue";
 import { processPostContent } from "../services/content.service";
+import { createNotification } from "../services/notification.service";
 
 export function startContentWorker(): Worker<ContentJobPayload> {
   const prisma = new PrismaClient();
@@ -10,9 +11,18 @@ export function startContentWorker(): Worker<ContentJobPayload> {
   const worker = new Worker<ContentJobPayload>(
     CONTENT_QUEUE_NAME,
     async (job) => {
-      const { aiJobId, calendarEntryId, userId, useCompanyMedia } = job.data;
+      const { aiJobId, calendarEntryId, userId, companyId, useCompanyMedia } = job.data;
       console.log(`[Worker] Processando job ${job.id} — aiJobId=${aiJobId} useCompanyMedia=${useCompanyMedia ?? false}`);
       await processPostContent(prisma, aiJobId, calendarEntryId, userId, useCompanyMedia ?? false);
+      await createNotification(prisma, {
+        userId,
+        companyId: companyId ?? undefined,
+        type: NotificationType.CONTENT_READY,
+        title: "Conteúdo gerado!",
+        message: "Um novo post foi gerado e está pronto para download.",
+      }).catch((err: Error) => {
+        console.error(`[Worker] Falha ao criar notificação: ${err.message}`);
+      });
     },
     {
       connection: redisConnection,

@@ -16,7 +16,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  companies Company[]
+  companies     Company[]
+  notifications Notification[]
 }
 
 model Company {
@@ -39,6 +40,8 @@ model Company {
   calendars        ContentCalendar[]
   aiJobs           AIJob[]
   media            CompanyMedia[]
+  notifications    Notification[]
+  automationConfig AutomationConfig?
 }
 
 model BrandProfile {
@@ -137,6 +140,43 @@ model CompanyMedia {
 
   @@index([companyId])
   @@index([companyId, category])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([userId, createdAt])
+}
+
+model AutomationConfig {
+  id                      String   @id @default(uuid())
+  enabled                 Boolean  @default(false)
+  autoGenerateContent     Boolean  @default(true)
+  autoRefillCalendar      Boolean  @default(true)
+  calendarRefillThreshold Int      @default(7)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+enum NotificationType {
+  CONTENT_READY
+  CALENDAR_UPDATED
+  AUTOMATION_ERROR
 }
 
 enum MediaType {

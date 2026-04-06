@@ -20,7 +20,6 @@ export function startMediaWorker(): Worker<MediaAnalysisJobPayload> {
     {
       connection: redisConnection,
       concurrency: 1,
-      limiter: { max: 1, duration: 15_000 },
     }
   );
 

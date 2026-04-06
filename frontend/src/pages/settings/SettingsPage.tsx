@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Loader2,
   Palette,
+  Zap,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -13,6 +14,7 @@ import { MediaUploader } from "@/components/ui/MediaUploader";
 import { useMe, useUpdateMe, useChangePassword } from "@/hooks/useUser";
 import { useMyProfile, useUpdateBrandProfile } from "@/hooks/useCompany";
 import { useUploadMedia } from "@/hooks/useMedia";
+import { useAutomationConfig, useUpdateAutomationConfig, useTriggerAutomation } from "@/hooks/useAutomation";
 
 /* ─── Profile form ─────────────────��─────────────────────────── */
 
@@ -422,6 +424,207 @@ function BrandingCard({ companyId }: { companyId: string }) {
   );
 }
 
+/* ─── Toggle helper ──────────────────────────────────────────── */
+
+function Toggle({
+  checked,
+  onChange,
+  label,
+  description,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  description?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div>
+        <p className="text-sm font-medium text-foreground">{label}</p>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+        )}
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+          checked ? "bg-primary" : "bg-muted"
+        }`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform ${
+            checked ? "translate-x-5" : "translate-x-0"
+          }`}
+        />
+      </button>
+    </div>
+  );
+}
+
+/* ─── Automation card ─────────────────────────────────────────── */
+
+function AutomationCard() {
+  const { data: config, isLoading } = useAutomationConfig();
+  const updateConfig = useUpdateAutomationConfig();
+  const trigger = useTriggerAutomation();
+
+  const [enabled, setEnabled] = useState(false);
+  const [autoGenerateContent, setAutoGenerateContent] = useState(true);
+  const [autoRefillCalendar, setAutoRefillCalendar] = useState(true);
+  const [threshold, setThreshold] = useState(7);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
+  const [triggerSuccess, setTriggerSuccess] = useState(false);
+
+  useEffect(() => {
+    if (config) {
+      setEnabled(config.enabled);
+      setAutoGenerateContent(config.autoGenerateContent);
+      setAutoRefillCalendar(config.autoRefillCalendar);
+      setThreshold(config.calendarRefillThreshold);
+    }
+  }, [config]);
+
+  const handleSave = async () => {
+    setError("");
+    setSuccess(false);
+    try {
+      await updateConfig.mutateAsync({
+        enabled,
+        autoGenerateContent,
+        autoRefillCalendar,
+        calendarRefillThreshold: threshold,
+      });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg ?? "Erro ao salvar configurações.");
+    }
+  };
+
+  const handleTrigger = async () => {
+    try {
+      await trigger.mutateAsync();
+      setTriggerSuccess(true);
+      setTimeout(() => setTriggerSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+      setError(msg ?? "Erro ao acionar automação.");
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-primary" />
+          Automação
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-5">
+          <Toggle
+            checked={enabled}
+            onChange={setEnabled}
+            label="Ativar automação"
+            description="Permite que o sistema gere e recomponha conteúdo automaticamente."
+          />
+
+          <div className="border-t border-border pt-4 space-y-4">
+            <Toggle
+              checked={autoGenerateContent}
+              onChange={setAutoGenerateContent}
+              label="Gerar conteúdo automaticamente"
+              description="Enfileira posts pendentes com até 24h de antecedência."
+            />
+
+            <Toggle
+              checked={autoRefillCalendar}
+              onChange={setAutoRefillCalendar}
+              label="Recompor calendário automaticamente"
+              description="Regenera o calendário quando há poucos posts pendentes."
+            />
+
+            <div className="space-y-1.5">
+              <label htmlFor="threshold" className="text-sm font-medium text-foreground">
+                Dias de antecedência para recompor
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Recompõe o calendário se houver menos de 3 posts pendentes nos próximos N dias.
+              </p>
+              <Input
+                id="threshold"
+                type="number"
+                value={String(threshold)}
+                onChange={(e) => {
+                  const v = parseInt(e.target.value, 10);
+                  if (!isNaN(v) && v >= 1 && v <= 30) setThreshold(v);
+                }}
+                min="1"
+                max="30"
+              />
+            </div>
+          </div>
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={handleSave} disabled={updateConfig.isPending}>
+              {updateConfig.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Salvando…</>
+              ) : (
+                "Salvar"
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleTrigger}
+              disabled={trigger.isPending}
+              className="bg-muted text-foreground hover:bg-muted/80"
+            >
+              {trigger.isPending ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Acionando…</>
+              ) : (
+                "Acionar agora"
+              )}
+            </Button>
+
+            {success && (
+              <span className="flex items-center gap-1.5 text-sm text-green-500">
+                <CheckCircle2 className="h-4 w-4" />
+                Salvo
+              </span>
+            )}
+            {triggerSuccess && (
+              <span className="flex items-center gap-1.5 text-sm text-green-500">
+                <CheckCircle2 className="h-4 w-4" />
+                Ciclo iniciado
+              </span>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /* ─── Page ───────────────────────────────────────────────────── */
 
 export function SettingsPage() {
@@ -443,6 +646,7 @@ export function SettingsPage() {
           <PasswordCard />
 
           {companyId && <BrandingCard companyId={companyId} />}
+          <AutomationCard />
         </div>
       </div>
     </div>

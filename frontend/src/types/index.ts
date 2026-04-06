@@ -155,6 +155,26 @@ export interface AIJobStatus {
 
 // Phase 7 — dashboard & post management
 
+// Phase 8 — media library
+export type MediaType = "IMAGE" | "VIDEO" | "LOGO";
+
+export interface CompanyMedia {
+  id: string;
+  companyId: string;
+  type: MediaType;
+  url: string;
+  filename: string;
+  mimeType: string;
+  category: string | null;
+  tags: string[];
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  aiAnalyzed: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type MediaKind = "video" | "image" | "none";
 
 export interface DashboardStats {
@@ -207,6 +227,40 @@ export interface PostsFilter {
   to?: string;
   page?: number;
   limit?: number;
+}
+
+// Phase 9 — automation & notifications
+export type NotificationType =
+  | "CONTENT_READY"
+  | "CALENDAR_UPDATED"
+  | "AUTOMATION_ERROR";
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  companyId: string | null;
+  createdAt: string;
+}
+
+export interface AutomationConfig {
+  id: string;
+  companyId: string;
+  enabled: boolean;
+  autoGenerateContent: boolean;
+  autoRefillCalendar: boolean;
+  calendarRefillThreshold: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateAutomationConfigRequest {
+  enabled?: boolean;
+  autoGenerateContent?: boolean;
+  autoRefillCalendar?: boolean;
+  calendarRefillThreshold?: number;
 }
 
 export interface PostMediaInfo {
