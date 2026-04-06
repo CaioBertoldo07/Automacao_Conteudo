@@ -6,6 +6,7 @@ import { CompanyFormPage } from "@/pages/company/CompanyFormPage";
 import { StrategyPage } from "@/pages/strategy/StrategyPage";
 import { CalendarPage } from "@/pages/calendar/CalendarPage";
 import { ContentPage } from "@/pages/content/ContentPage";
+import { MediaLibraryPage } from "@/pages/media/MediaLibraryPage";
 import { SettingsPage } from "@/pages/settings/SettingsPage";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { useTheme, type Theme } from "@/hooks/useTheme";
@@ -104,6 +105,14 @@ export default function App() {
           element={
             <PrivateLayout>
               <ContentPage />
+            </PrivateLayout>
+          }
+        />
+        <Route
+          path="/media"
+          element={
+            <PrivateLayout>
+              <MediaLibraryPage />
             </PrivateLayout>
           }
         />

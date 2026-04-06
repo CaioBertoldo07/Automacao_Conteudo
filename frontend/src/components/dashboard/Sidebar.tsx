@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   Calendar,
   FileImage,
+  Images,
   Settings,
   LogOut,
   Zap,
@@ -19,6 +20,7 @@ const navItems = [
   { to: "/strategy", icon: Sparkles, label: "Estratégia" },
   { to: "/calendar", icon: Calendar, label: "Calendário" },
   { to: "/content", icon: FileImage, label: "Conteúdo" },
+  { to: "/media", icon: Images, label: "Biblioteca" },
   { to: "/settings", icon: Settings, label: "Configurações" },
 ];
 

@@ -38,6 +38,7 @@ model Company {
   posts            Post[]
   calendars        ContentCalendar[]
   aiJobs           AIJob[]
+  media            CompanyMedia[]
 }
 
 model BrandProfile {
@@ -46,6 +47,9 @@ model BrandProfile {
   targetAudience     String
   mainProducts       String
   communicationStyle String
+  logoUrl            String?
+  brandColors        String[]
+  visualStyle        String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -112,6 +116,33 @@ model ContentStrategy {
 
   companyId String  @unique
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model CompanyMedia {
+  id          String    @id @default(uuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  type        MediaType
+  url         String
+  filename    String
+  mimeType    String
+  category    String?
+  tags        String[]
+  description String?
+  metadata    Json?
+  aiAnalyzed  Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([companyId])
+  @@index([companyId, category])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  LOGO
 }
 
 enum StrategyApprovalStatus {

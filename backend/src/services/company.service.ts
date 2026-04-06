@@ -69,3 +69,47 @@ export async function getMyProfile(prisma: PrismaClient, userId: string) {
     include: { brandProfile: true },
   });
 }
+
+export interface UpdateBrandProfileInput {
+  description?: string;
+  targetAudience?: string;
+  mainProducts?: string;
+  communicationStyle?: string;
+  logoUrl?: string;
+  brandColors?: string[];
+  visualStyle?: string;
+}
+
+export async function updateBrandProfile(
+  prisma: PrismaClient,
+  companyId: string,
+  userId: string,
+  data: UpdateBrandProfileInput
+) {
+  const company = await prisma.company.findUnique({ where: { id: companyId } });
+  if (!company) {
+    throw Object.assign(new Error("Empresa não encontrada."), { statusCode: 404 });
+  }
+  if (company.userId !== userId) {
+    throw Object.assign(new Error("Acesso negado."), { statusCode: 403 });
+  }
+
+  const updateData = Object.fromEntries(
+    Object.entries(data).filter(([, v]) => v !== undefined)
+  );
+
+  return prisma.brandProfile.upsert({
+    where: { companyId },
+    create: {
+      companyId,
+      description: data.description ?? "",
+      targetAudience: data.targetAudience ?? "",
+      mainProducts: data.mainProducts ?? "",
+      communicationStyle: data.communicationStyle ?? "",
+      logoUrl: data.logoUrl,
+      brandColors: data.brandColors ?? [],
+      visualStyle: data.visualStyle,
+    },
+    update: updateData,
+  });
+}

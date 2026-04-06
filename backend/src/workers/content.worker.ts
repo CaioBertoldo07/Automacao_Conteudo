@@ -10,9 +10,9 @@ export function startContentWorker(): Worker<ContentJobPayload> {
   const worker = new Worker<ContentJobPayload>(
     CONTENT_QUEUE_NAME,
     async (job) => {
-      const { aiJobId, calendarEntryId, userId } = job.data;
-      console.log(`[Worker] Processando job ${job.id} — aiJobId=${aiJobId}`);
-      await processPostContent(prisma, aiJobId, calendarEntryId, userId);
+      const { aiJobId, calendarEntryId, userId, useCompanyMedia } = job.data;
+      console.log(`[Worker] Processando job ${job.id} — aiJobId=${aiJobId} useCompanyMedia=${useCompanyMedia ?? false}`);
+      await processPostContent(prisma, aiJobId, calendarEntryId, userId, useCompanyMedia ?? false);
     },
     {
       connection: redisConnection,

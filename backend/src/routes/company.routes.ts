@@ -17,4 +17,5 @@ export async function companyRoutes(
   fastify.get("/companies/:id", auth, c.getHandler.bind(c));
   fastify.patch("/companies/:id", auth, c.updateHandler.bind(c));
   fastify.delete("/companies/:id", auth, c.deleteHandler.bind(c));
+  fastify.patch("/companies/:companyId/brand-profile", auth, c.updateBrandProfileHandler.bind(c));
 }

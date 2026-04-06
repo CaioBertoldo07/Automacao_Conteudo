@@ -3,9 +3,13 @@
  * Run separately from the API: `npm run worker` (dev) or `node dist/worker.js` (prod).
  */
 import { startContentWorker } from "./workers/content.worker";
+import { startMediaWorker } from "./workers/media.worker";
 
 const worker = startContentWorker();
 console.log(`[Worker] content-generation worker iniciado (concurrency=3)`);
+
+const mediaWorker = startMediaWorker();
+console.log(`[Worker] media-analysis worker iniciado (concurrency=2)`);
 
 // Keep the process alive.
 process.on("uncaughtException", (err) => {

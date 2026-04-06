@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import { PrismaClient } from "@prisma/client";
 import fs from "fs";
 import path from "path";
@@ -11,6 +12,7 @@ import { companyRoutes } from "./routes/company.routes";
 import { strategyRoutes } from "./routes/strategy.routes";
 import { calendarRoutes } from "./routes/calendar.routes";
 import { contentRoutes } from "./routes/content.routes";
+import { mediaRoutes } from "./routes/media.routes";
 
 export async function buildApp() {
   const fastify = Fastify({
@@ -22,6 +24,10 @@ export async function buildApp() {
   await fastify.register(cors, {
     origin: env.corsOrigins,
     credentials: true,
+  });
+
+  await fastify.register(multipart, {
+    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
   });
 
   fastify.get("/", async () => {
@@ -38,28 +44,24 @@ export async function buildApp() {
     ".mp4": "video/mp4",
   };
 
-  fastify.get<{ Params: { filename: string } }>(
-    "/media/:filename",
+  fastify.get<{ Params: { "*": string } }>(
+    "/media/*",
     async (request, reply) => {
-      const { filename } = request.params;
+      const rawPath = (request.params as { "*": string })["*"];
 
       // Reject any path traversal attempt.
-      if (
-        filename.includes("..") ||
-        filename.includes("/") ||
-        filename.includes("\\")
-      ) {
-        return reply.code(400).send({ error: "Invalid filename." });
+      if (rawPath.includes("..") || rawPath.includes("\\")) {
+        return reply.code(400).send({ error: "Invalid path." });
       }
 
-      const filepath = path.join(env.mediaDir, filename);
+      const filepath = path.join(env.mediaDir, rawPath);
 
       // Check existence synchronously to keep the error path cheap.
       if (!fs.existsSync(filepath)) {
         return reply.code(404).send({ error: "Media not found." });
       }
 
-      const ext = path.extname(filename).toLowerCase();
+      const ext = path.extname(rawPath).toLowerCase();
       const contentType = MEDIA_MIME[ext] ?? "application/octet-stream";
 
       reply.header("Content-Type", contentType);
@@ -74,6 +76,7 @@ export async function buildApp() {
   fastify.register(strategyRoutes, { prefix: "/api", prisma });
   fastify.register(calendarRoutes, { prefix: "/api", prisma });
   fastify.register(contentRoutes, { prefix: "/api", prisma });
+  fastify.register(mediaRoutes, { prefix: "/api", prisma });
 
   fastify.addHook("onClose", async () => {
     await prisma.$disconnect();

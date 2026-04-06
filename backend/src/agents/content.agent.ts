@@ -23,6 +23,10 @@ export interface CaptionContext {
   postHook: string;
   postDescription: string;
   postCta: string;
+  /** Optional: description of a company media image to anchor the caption. */
+  mediaDescription?: string;
+  /** Optional: tags from the company media image for richer context. */
+  mediaTags?: string[];
 }
 
 function extractJson(raw: string): string {
@@ -61,7 +65,11 @@ Briefing do post:
 - Descrição: ${ctx.postDescription}
 - CTA: ${ctx.postCta}
 
-IMPORTANTE: Responda APENAS com um JSON válido. Sem markdown, sem explicações, somente o JSON puro.
+${ctx.mediaDescription ? `Contexto da imagem da empresa:
+- Descrição: ${ctx.mediaDescription}${ctx.mediaTags && ctx.mediaTags.length > 0 ? `\n- Elementos: ${ctx.mediaTags.join(", ")}` : ""}
+A legenda deve ser baseada nessa imagem real da empresa, tornando-a relevante ao conteúdo visual.
+
+` : ""}IMPORTANTE: Responda APENAS com um JSON válido. Sem markdown, sem explicações, somente o JSON puro.
 
 {
   "caption": "texto completo da legenda com hook, desenvolvimento e CTA",

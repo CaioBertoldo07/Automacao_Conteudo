@@ -12,6 +12,9 @@ export interface BrandProfile {
   targetAudience: string;
   mainProducts: string;
   communicationStyle: string;
+  logoUrl: string | null;
+  brandColors: string[];
+  visualStyle: string | null;
   createdAt: string;
   companyId: string;
 }

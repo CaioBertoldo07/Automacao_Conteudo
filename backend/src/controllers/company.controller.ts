@@ -8,7 +8,18 @@ import {
   getCompanyById,
   getMyProfile,
   updateCompany,
+  updateBrandProfile,
 } from "../services/company.service";
+
+const brandProfileSchema = z.object({
+  description: z.string().min(1).optional(),
+  targetAudience: z.string().min(1).optional(),
+  mainProducts: z.string().min(1).optional(),
+  communicationStyle: z.string().min(1).optional(),
+  logoUrl: z.string().url().optional().or(z.literal("")),
+  brandColors: z.array(z.string().regex(/^#[0-9A-Fa-f]{3,6}$/)).optional(),
+  visualStyle: z.enum(["minimalista", "vibrante", "profissional", "elegante"]).optional(),
+});
 
 const createSchema = z.object({
   name: z.string().min(2, "Nome deve ter no mínimo 2 caracteres."),
@@ -88,6 +99,28 @@ export function makeCompanyController(prisma: PrismaClient) {
         return reply.status(404).send({ error: "Nenhuma empresa cadastrada." });
       }
       return reply.send(profile);
+    },
+
+    async updateBrandProfileHandler(request: FastifyRequest, reply: FastifyReply) {
+      const { companyId } = request.params as { companyId: string };
+
+      const body = brandProfileSchema.safeParse(request.body);
+      if (!body.success) {
+        return reply.status(400).send({ error: body.error.errors[0].message });
+      }
+
+      try {
+        const profile = await updateBrandProfile(
+          prisma,
+          companyId,
+          request.userId,
+          body.data
+        );
+        return reply.send(profile);
+      } catch (err: unknown) {
+        const e = err as Error & { statusCode?: number };
+        return reply.status(e.statusCode ?? 500).send({ error: e.message });
+      }
     },
   };
 }

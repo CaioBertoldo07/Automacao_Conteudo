@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+import path from "path";
 import {
   PrismaClient,
   ContentType,
@@ -11,6 +13,8 @@ import { generateImage } from "../agents/image.adapter";
 import { generateVideo } from "../agents/video.adapter";
 import { uploadMedia } from "../utils/storage";
 import { contentQueue } from "../queues/content.queue";
+import { selectMediaForPost } from "./media.service";
+import { env } from "../config/env";
 
 function makeError(message: string, statusCode: number): Error {
   return Object.assign(new Error(message), { statusCode });
@@ -44,7 +48,8 @@ export interface EnqueueResult {
 export async function enqueuePostContent(
   prisma: PrismaClient,
   userId: string,
-  calendarEntryId: string
+  calendarEntryId: string,
+  useCompanyMedia = false
 ): Promise<EnqueueResult> {
   // Step 1 — read entry for ownership + strategy validation.
   const entry = await prisma.contentCalendar.findUnique({
@@ -107,6 +112,7 @@ export async function enqueuePostContent(
       aiJobId: aiJob.id,
       calendarEntryId,
       userId,
+      ...(useCompanyMedia ? { useCompanyMedia: true } : {}),
     });
   } catch (queueErr) {
     await Promise.allSettled([
@@ -160,11 +166,35 @@ export async function enqueueBatch(
     throw makeError("Nenhuma entrada pendente para gerar conteúdo.", 422);
   }
 
+  // Determine which entries should use company media (30% distribution).
+  // Only applies if the company has at least one analyzed media file.
+  const analyzedMediaCount = await prisma.companyMedia.count({
+    where: { companyId: company.id, aiAnalyzed: true },
+  });
+
+  const useMediaSet = new Set<string>();
+  if (analyzedMediaCount > 0 && pendingEntries.length > 0) {
+    const targetCount = Math.round(pendingEntries.length * 0.3);
+    // Distribute uniformly across the batch (not just the first 30%)
+    const step = pendingEntries.length / targetCount;
+    for (let i = 0; i < targetCount; i++) {
+      const idx = Math.round(i * step);
+      if (idx < pendingEntries.length) {
+        useMediaSet.add(pendingEntries[idx].id);
+      }
+    }
+  }
+
   const items: BatchEnqueueItemResult[] = [];
 
   for (const e of pendingEntries) {
     try {
-      const { aiJobId } = await enqueuePostContent(prisma, userId, e.id);
+      const { aiJobId } = await enqueuePostContent(
+        prisma,
+        userId,
+        e.id,
+        useMediaSet.has(e.id)
+      );
       items.push({ calendarEntryId: e.id, aiJobId, status: "queued" });
     } catch (err) {
       // Capture per-item failure so caller gets full audit trail.
@@ -245,7 +275,8 @@ export async function processPostContent(
   prisma: PrismaClient,
   aiJobId: string,
   calendarEntryId: string,
-  _userId: string
+  _userId: string,
+  useCompanyMedia = false
 ): Promise<void> {
   // Transition AIJob to PROCESSING.
   await prisma.aIJob.update({
@@ -313,6 +344,72 @@ export async function processPostContent(
       description: company.description,
       cta: "",
     };
+
+    // ── Company media path ──────────────────────────────────────────────────
+    // If useCompanyMedia is set, try to use an existing company image instead
+    // of generating new AI media. Falls back to standard AI generation if no
+    // suitable media is found.
+
+    if (useCompanyMedia) {
+      const preferredCategory = (postIdea as { category?: string }).category;
+      const companyMedia = await selectMediaForPost(
+        prisma,
+        entry.companyId,
+        preferredCategory
+      );
+
+      if (companyMedia) {
+        // Generate caption enriched with media context
+        const captionCtx: CaptionContext = {
+          companyName: company.name,
+          niche: company.niche,
+          city: company.city,
+          tone: company.tone,
+          brandTone: strategyContent.brandTone,
+          postTitle: postIdea.title,
+          postObjective: postIdea.objective,
+          postFormat: entry.type,
+          postHook: postIdea.hook,
+          postDescription: postIdea.description,
+          postCta: postIdea.cta,
+          mediaDescription: companyMedia.description ?? undefined,
+          mediaTags: companyMedia.tags.length > 0 ? companyMedia.tags : undefined,
+        };
+
+        const { caption, hashtags } = await generateCaption(captionCtx);
+        const hashtagString = hashtags.map((h) => `#${h}`).join(" ");
+
+        const savedPost = await prisma.post.upsert({
+          where: { calendarId: calendarEntryId },
+          create: {
+            type: entry.type,
+            caption,
+            hashtags: hashtagString,
+            mediaUrl: companyMedia.url,
+            status: JobStatus.DONE,
+            companyId: entry.companyId,
+            calendarId: calendarEntryId,
+          },
+          update: { caption, hashtags: hashtagString, mediaUrl: companyMedia.url, status: JobStatus.DONE },
+        });
+
+        await prisma.contentCalendar.update({
+          where: { id: calendarEntryId },
+          data: { status: JobStatus.DONE },
+        });
+
+        await prisma.aIJob.update({
+          where: { id: aiJobId },
+          data: {
+            status: JobStatus.DONE,
+            result: { postId: savedPost.id, usedCompanyMedia: companyMedia.id } as object,
+          },
+        });
+
+        return; // Done — used company media
+      }
+      // No suitable media found: fall through to standard AI generation
+    }
 
     // Step 1: caption + hashtags
     const captionCtx: CaptionContext = {

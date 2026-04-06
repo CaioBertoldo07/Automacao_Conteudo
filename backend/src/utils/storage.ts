@@ -61,3 +61,33 @@ export async function uploadMedia(
 
   return { publicUrl: `/media/${filename}` };
 }
+
+export interface CompanyMediaUploadResult {
+  publicUrl: string;
+  filename: string;
+}
+
+/**
+ * Upload a company media file received as a Buffer (multipart upload).
+ * Saves to MEDIA_DIR/company-media/<companyId>/<uuid>.<ext>.
+ * Returns { publicUrl, filename } using the same /media/ abstraction.
+ * Future: swap for S3/R2 without changing callers.
+ */
+export async function uploadCompanyMedia(
+  buffer: Buffer,
+  mimeType: string,
+  companyId: string
+): Promise<CompanyMediaUploadResult> {
+  const subDir = path.join(env.mediaDir, "company-media", companyId);
+  await fs.mkdir(subDir, { recursive: true });
+
+  const ext = extForMime(mimeType);
+  const uuid = crypto.randomUUID();
+  const filename = `${uuid}${ext}`;
+  const filepath = path.join(subDir, filename);
+
+  await fs.writeFile(filepath, buffer);
+
+  // URL served by the static /media/* route in app.ts via a sub-path.
+  return { publicUrl: `/media/company-media/${companyId}/${filename}`, filename };
+}

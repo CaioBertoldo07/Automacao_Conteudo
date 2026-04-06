@@ -7,6 +7,7 @@ export interface ContentJobPayload {
   aiJobId: string;
   calendarEntryId: string;
   userId: string;
+  useCompanyMedia?: boolean;
 }
 
 export const contentQueue = new Queue<ContentJobPayload>(CONTENT_QUEUE_NAME, {
