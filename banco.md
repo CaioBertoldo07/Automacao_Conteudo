@@ -22,7 +22,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  companies Company[]
+  companies     Company[]
+  notifications Notification[]
 }
 ```
 
@@ -53,6 +54,8 @@ model Company {
   calendars       ContentCalendar[]
   aiJobs          AIJob[]
   media           CompanyMedia[]
+  notifications   Notification[]
+  automationConfig AutomationConfig?
 }
 ```
 
@@ -202,6 +205,14 @@ enum MediaType {
   VIDEO
   LOGO
 }
+
+enum NotificationType {
+  CONTENT_READY
+  AUTOMATION_COMPLETE
+  AUTOMATION_ERROR
+  CALENDAR_GENERATED
+  SYSTEM
+}
 ```
 
 ---
@@ -235,6 +246,53 @@ model CompanyMedia {
 
 ---
 
+## Notification
+
+Notificações do sistema para o usuário (geradas por workers após eventos).
+
+```prisma
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([userId, read])
+}
+```
+
+---
+
+## AutomationConfig
+
+Configuração de automação por empresa (1:1 com Company). Criada via upsert com defaults na primeira consulta.
+
+```prisma
+model AutomationConfig {
+  id                    String   @id @default(uuid())
+  automationEnabled     Boolean  @default(false)
+  autoGenerateCalendar  Boolean  @default(true)
+  autoGeneratePosts     Boolean  @default(true)
+  minPendingPostsThreshold Int   @default(3)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  companyId String  @unique
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+```
+
+---
+
 # Relações
 
 ```
@@ -246,7 +304,12 @@ User
     │   └── Post (1:1)
     ├── Post (1:N)
     ├── AIJob (1:N)
-    └── CompanyMedia (1:N)
+    ├── CompanyMedia (1:N)
+    ├── Notification (1:N)
+    └── AutomationConfig (1:1)
+
+User
+└── Notification (1:N)
 ```
 
 Todos os filhos de Company têm `onDelete: Cascade` — deletar uma empresa remove todos os seus dados.

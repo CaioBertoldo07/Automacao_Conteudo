@@ -49,8 +49,9 @@ Frontend (React + Vite)
 API Backend (Fastify — TypeScript)
         ↓
 BullMQ Queue (Redis)
-        ↓
-Content Worker (concorrência 3)
+      ↙       ↘
+Content Worker   Media Worker   Automation Worker
+(concorrência 3) (concorrência 1) (concorrência 1, cron 03:00)
         ↓
 APIs externas (Gemini / Veo 3)
         ↓
@@ -65,14 +66,20 @@ Armazenamento local (/uploads)
 2. Sistema gera estratégia de conteúdo via Gemini
 3. Usuário aprova a estratégia
 4. Sistema cria calendário de posts baseado na estratégia
-5. Usuário aciona geração de um post do calendário
+5. Usuário aciona geração de um post do calendário (manual ou automático)
 6. API cria AIJob (PENDING) e enfileira no BullMQ
 7. Content Worker consome o job:
    - Gemini gera legenda e hashtags
    - Gemini e/ou Veo gera mídia (imagem ou vídeo)
    - Arquivo salvo em `/uploads`, URL pública via `/media/:filename`
    - Post atualizado como DONE no banco
+   - Notificação `CONTENT_READY` criada no banco
 8. Conteúdo aparece no dashboard/calendário
+9. (Automático) Automation Worker executa diariamente às 03:00 UTC:
+   - Itera empresas com `automationEnabled: true`
+   - Verifica threshold de posts pendentes
+   - Enfileira geração de calendário e posts automaticamente
+   - Notificação `AUTOMATION_COMPLETE` criada ao final
 
 ---
 
@@ -88,6 +95,8 @@ Responsável por:
 - Calendário de conteúdo (FullCalendar)
 - Geração e visualização de posts
 - Download de mídia gerada
+- Sino de notificações (`NotificationBell`) com badge e painel de listagem
+- Configuração de automação (toggles, threshold, disparo manual) na SettingsPage
 
 ---
 
@@ -103,6 +112,8 @@ Rotas `/api/*`:
 - `/api/content` — enfileiramento e status de geração
 - `/api/companies/:companyId/media` — upload, listagem, toggle e exclusão de mídias da empresa
 - `/api/companies/:companyId/media/requeue` — re-enfileirar mídias com análise pendente
+- `/api/notifications` — listagem, contagem de não lidas, marcar como lida
+- `/api/automation` — configuração de automação e disparo manual do ciclo
 
 Rota estática:
 
@@ -122,6 +133,7 @@ Responsável por:
 - gerar vídeo via Veo 3 (`video.adapter.ts`)
 - salvar mídia no filesystem (`utils/storage.ts`)
 - atualizar AIJob e Post no banco
+- criar notificação `CONTENT_READY` no banco após geração bem-sucedida
 
 Configuração: concorrência 3, retry automático exponencial (3 tentativas).
 
@@ -140,7 +152,24 @@ Responsável por:
 - atualizar `CompanyMedia` no banco com `aiAnalyzed: true`
 - se categoria = `logo`, promover tipo para `LOGO`
 
-Configuração: concorrência 1, limiter 1 req/15 s (≈ 4 req/min — respeita free tier Gemini), backoff exponencial 60 s com 5 tentativas.
+Configuração: concorrência 1, backoff exponencial 60 s com 5 tentativas.
+
+---
+
+## Automation Worker (BullMQ)
+
+Arquivo: `src/worker.ts` / `src/workers/automation.worker.ts`
+
+Responsável por:
+
+- consumir jobs da fila `automation`
+- executar `runAutomationCycle` do `automation.service.ts`
+- iterar todas as empresas com `automationEnabled: true`
+- verificar threshold de posts pendentes antes de gerar
+- enfileirar geração de calendário e conteúdo para cada empresa elegível
+- isolar falhas por empresa (uma empresa falhando não bloqueia as demais)
+
+Configuração: concorrência 1, job recorrente cron `0 3 * * *` (03:00 UTC) com `jobId` idempotente.
 
 ---
 
@@ -161,8 +190,9 @@ agents/
 
 ```
 queues/
-    content.queue.ts   ← define fila "content-generation"
-    media.queue.ts     ← define fila "media-analysis"
+    content.queue.ts    ← define fila "content-generation"
+    media.queue.ts      ← define fila "media-analysis"
+    automation.queue.ts ← define fila "automation" (job recorrente diário 03:00 UTC)
 ```
 
 Configuração da fila `content-generation`:
@@ -176,6 +206,12 @@ Configuração da fila `media-analysis`:
 - 5 tentativas com backoff exponencial (60 s inicial → 60 s, 120 s, 240 s, 480 s, 960 s)
 - Limpa jobs concluídos (manter últimos 100)
 - Limpa jobs com falha (manter últimos 200)
+
+Configuração da fila `automation`:
+
+- job recorrente com cron `0 3 * * *`, `jobId: "daily-automation"` (idempotente)
+- 3 tentativas com backoff exponencial (5 s inicial)
+- Limpa jobs concluídos (manter últimos 50)
 
 ---
 
@@ -246,4 +282,3 @@ Estratégia atual e futura:
 - TikTok, LinkedIn
 - analytics de desempenho
 - múltiplas empresas por usuário
-- notificações de conclusão de jobs

@@ -150,13 +150,40 @@ Objetivo: permitir que empresas façam upload e gestão de mídias próprias par
 
 ---
 
-# Fase 9 — Automação Completa
+# Fase 9 — Automação Completa ✅ COMPLETO
 
-Sistema deve:
+Objetivo: ciclo autônomo semanal de geração de conteúdo com notificações em tempo real.
 
-- gerar conteúdo semanal automaticamente
-- atualizar calendário
-- enviar notificações de conclusão
+### Backend
+
+- `AutomationConfig` model no banco (habilitação, horário, threshold de posts pending) ✓
+- `Notification` model no banco com enum `NotificationType` ✓
+- Fila `automation` (BullMQ) via `automation.queue.ts` ✓
+- Automation Worker (`automation.worker.ts`) — concorrência 1 ✓
+  - job recorrente registrado no cron `0 3 * * *` (03:00 UTC) com `jobId` idempotente ✓
+  - `runAutomationCycle`: itera empresas com `automationEnabled: true`, verifica threshold de posts pendentes, enfileira geração de calendário + posts ✓
+  - isolamento de erros por empresa (falha em uma não bloqueia as demais) ✓
+- `notification.service.ts` — criação, listagem, markAsRead (com ownership check), markAllAsRead, countUnread ✓
+- `automation.service.ts` — runAutomationCycle, getAutomationConfig (upsert com defaults), updateAutomationConfig ✓
+- `content.worker.ts` — cria notificação `CONTENT_READY` após geração bem-sucedida de cada post ✓
+- 7 novos endpoints:
+  - `GET /api/notifications` — listar notificações do usuário ✓
+  - `GET /api/notifications/unread-count` — contagem de não lidas ✓
+  - `POST /api/notifications/:id/read` — marcar uma como lida ✓
+  - `POST /api/notifications/read-all` — marcar todas como lidas ✓
+  - `GET /api/automation/config` — buscar configuração de automação da empresa ✓
+  - `PUT /api/automation/config` — atualizar configuração de automação ✓
+  - `POST /api/automation/trigger` — disparar ciclo manualmente ✓
+
+### Frontend
+
+- `useNotifications` hook — polling 30 s, markAsRead, markAllAsRead ✓
+- `useUnreadCount` hook — polling inteligente (15 s quando há não lidas, 30 s contrário) ✓
+- `useAutomation` hook — getConfig, updateConfig, triggerAutomation (com invalidação de calendar/posts/notifications) ✓
+- Componente `NotificationBell` — badge com contagem, dropdown, marca todas como lidas ao abrir ✓
+- Componente `NotificationPanel` — lista com ícones/cores por tipo, estados de loading e vazio ✓
+- `NotificationBell` integrado na Sidebar ✓
+- Seção Automação na `SettingsPage` — toggles (habilitado, calendário auto, posts auto), threshold, botão salvar, botão disparar ciclo manual ✓
 
 ---
 
